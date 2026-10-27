@@ -1,0 +1,32 @@
+[
+  {
+    "id": "paq-hogar-2cam",
+    "nombre": "Kit Hogar Seguro (2 Cámaras)",
+    "descripcion": "Ideal para casas o departamentos. Incluye DVR de 4 canales, 2 cámaras Full HD 1080p visión nocturna y disco duro de 1TB.",
+    "precioBase": 3499.00,
+    "numCamaras": 2,
+    "discoDuroGb": 1000,
+    "tipo": "paquete",
+    "incluyeInstalacion": false
+  },
+  {
+    "id": "paq-pyme-4cam",
+    "nombre": "Kit Negocio Protegido (4 Cámaras)",
+    "descripcion": "Ideal para tiendas, farmacias, papelerías o cafeterías. Incluye DVR de 4 canales, 4 cámaras exterior/interior y disco duro de 1TB.",
+    "precioBase": 5799.00,
+    "numCamaras": 4,
+    "discoDuroGb": 1000,
+    "tipo": "paquete",
+    "incluyeInstalacion": false
+  },
+  {
+    "id": "paq-empresa-8cam",
+    "nombre": "Kit Seguridad Total (8 Cámaras)",
+    "descripcion": "Ideal para restaurantes o bodegas. Incluye DVR de 8 canales, 8 cámaras Full HD y disco duro de 2TB.",
+    "precioBase": 9899.00,
+    "numCamaras": 8,
+    "discoDuroGb": 2000,
+    "tipo": "paquete",
+    "incluyeInstalacion": false
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "cam-bala-1080p",
+    "nombre": "Cámara Tipo Bala Exterior 1080p",
+    "descripcion": "Resistente a lluvia e intemperie (IP67), visión nocturna 20m.",
+    "categoria": "camara",
+    "precioUnitario": 599.00
+  },
+  {
+    "id": "cam-domo-1080p",
+    "nombre": "Cámara Tipo Domo Interior 1080p",
+    "descripcion": "Diseño discreto para techos en interiores, lente gran angular.",
+    "categoria": "camara",
+    "precioUnitario": 549.00
+  },
+  {
+    "id": "dvr-4ch",
+    "nombre": "Grabador DVR 4 Canales Pentahíbrido",
+    "descripcion": "Soporta hasta 4 cámaras y conexión a app móvil.",
+    "categoria": "grabador",
+    "precioUnitario": 1250.00
+  },
+  {
+    "id": "dvr-8ch",
+    "nombre": "Grabador DVR 8 Canales Pentahíbrido",
+    "descripcion": "Soporta hasta 8 cámaras, salida HDMI y VGA.",
+    "categoria": "grabador",
+    "precioUnitario": 1650.00
+  },
+  {
+    "id": "disco-1tb",
+    "nombre": "Disco Duro 1TB Especial CCTV (Western Digital Purple)",
+    "descripcion": "Grabación continua 24/7 sin sobrecalentamiento.",
+    "categoria": "almacenamiento",
+    "precioUnitario": 1100.00
+  },
+  {
+    "id": "disco-2tb",
+    "nombre": "Disco Duro 2TB Especial CCTV (Western Digital Purple)",
+    "descripcion": "Mayor capacidad de historial de video (hasta 30 días con 4 cámaras).",
+    "categoria": "almacenamiento",
+    "precioUnitario": 1550.00
+  },
+  {
+    "id": "bobina-cable-100m",
+    "nombre": "Bobina Cable UTP Cat5e 100 Metros",
+    "descripcion": "Cable de red de alta calidad para transmisión de video y energía.",
+    "categoria": "cableado",
+    "precioUnitario": 480.00
+  }
+]

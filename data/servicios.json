@@ -1,0 +1,23 @@
+[
+  {
+    "id": "serv-instalacion-camara",
+    "nombre": "Instalación y cableado profesional por cámara",
+    "descripcion": "Fijación, perforación, tendido de cable estético bajo normas y conexión al DVR.",
+    "precioUnitario": 450.00,
+    "duracionHoras": 1.5
+  },
+  {
+    "id": "serv-configuracion-red",
+    "nombre": "Configuración en red y app móvil",
+    "descripcion": "Apertura de puertos, enlace con la nube y configuración de la app en hasta 3 celulares.",
+    "precioUnitario": 350.00,
+    "duracionHoras": 1.0
+  },
+  {
+    "id": "serv-mantenimiento-preventivo",
+    "nombre": "Mantenimiento preventivo general",
+    "descripcion": "Limpieza de lentes, ajuste de enfoque, revisión de fuentes de poder y estado del disco.",
+    "precioUnitario": 600.00,
+    "duracionHoras": 2.0
+  }
+]
