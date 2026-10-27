@@ -11,9 +11,10 @@ app.use(express.json()); // Permite recibir datos en formato JSON
 
 // Importamos nuestras rutas del catálogo
 const catalogRoutes = require('./routes/catalog');
+const quotationRoutes = require('./routes/quotation');
 
-// Le decimos a la app que use esas rutas bajo el prefijo "/api"
 app.use('/api', catalogRoutes);
+app.use('/api/quotation', quotationRoutes);
 
 // Ruta de prueba para la raíz
 app.get('/', (req, res) => {
