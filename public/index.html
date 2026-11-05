@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AEGIS Control | Sistemas de Videovigilancia CCTV & Seguridad Electrónica</title>
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('aegis_tema');
+        var oscuro = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (oscuro) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      future: { hoverOnlyWhenSupported: true },
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          colors: { carbon: { 950: '#06080b', 900: '#0b0e14', 800: '#121722', 700: '#1b2230' } },
+          transitionTimingFunction: {
+            DEFAULT: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            spring: 'cubic-bezier(0.16, 1, 0.3, 1)'
+          },
+          transitionDuration: { DEFAULT: '300ms' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    }
+    /* Se elimina scroll-behavior: smooth global para no interferir con la rueda del ratón */
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { font-feature-settings: 'cv11', 'ss01'; font-optical-sizing: auto; overflow-x: hidden; }
+    .tnum { font-variant-numeric: tabular-nums; }
+    .no-scrollbar { scrollbar-width: none; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+
+    /* ---------- Header: Único elemento con backdrop-filter en capa GPU aislada ---------- */
+    .material-header {
+      background: rgba(6, 8, 11, 0.86);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      backdrop-filter: blur(14px) saturate(160%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+    .material-header::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16) 15%, rgba(255, 255, 255, 0.16) 85%, transparent);
+      opacity: 0; transition: opacity 300ms var(--ease-out);
+    }
+    .material-header[data-scrolled="true"]::after { opacity: 1; }
+    .material-header :focus-visible { outline-color: #60a5fa; }
+
+    /* ---------- Tabs con indicador deslizante ---------- */
+    .tab { position: relative; padding: 0.85rem 0.125rem; color: #94a3b8; transition: color 220ms var(--ease-out), transform 180ms var(--ease-out); }
+    .tab[aria-selected="true"] { color: #fff; }
+    .tab:active { transform: scale(0.96); }
+    @media (hover: hover) {
+      .tab:hover { color: #e2e8f0; }
+      .tab[aria-selected="true"]:hover { color: #fff; }
+    }
+    #tab-indicador[data-ready="true"] { transition: transform 380ms var(--ease-out); }
+
+    /* ---------- Transiciones limpias sin saturar VRAM con will-change fijo ---------- */
+    .view { animation: view-in 420ms var(--ease-out) both; }
+    @keyframes view-in {
+      from { opacity: 0; transform: translate3d(0, 12px, 0); }
+      to { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    .card-stagger {
+      animation: card-rise 480ms var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * 55ms);
+    }
+    @keyframes card-rise {
+      from { opacity: 0; transform: translate3d(0, 14px, 0); }
+      to { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    /* Tarjeta de producto optimizada para scroll a 120fps */
+    .product-card {
+      position: relative;
+      transform: translateZ(0);
+      transition: transform 400ms var(--ease-out), border-color 300ms var(--ease-out);
+    }
+    .product-card::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      box-shadow: 0 20px 38px -12px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(37, 99, 235, 0.2);
+      opacity: 0; transition: opacity 400ms var(--ease-out);
+    }
+    @media (hover: hover) {
+      .product-card:hover { transform: translate3d(0, -5px, 0); }
+      .product-card:hover::after { opacity: 1; }
+    }
+
+    /* ---------- Escenario 3D de la Cámara (Sin blur costoso ni conflicto CSS/JS) ---------- */
+    .hero-bg-mesh {
+      background:
+        radial-gradient(circle at 80% 45%, rgba(37, 99, 235, 0.22) 0%, rgba(14, 165, 233, 0.08) 32%, transparent 62%),
+        radial-gradient(circle at 15% 20%, rgba(30, 58, 138, 0.18) 0%, transparent 48%),
+        linear-gradient(180deg, #06080b 0%, #0b0e14 100%);
+    }
+    .camera-stage {
+      perspective: 1100px;
+    }
+    /* Sin transition CSS aquí: el bucle requestAnimationFrame ya interpola suavemente */
+    .camera-3d-rig {
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+    }
+    .camera-float-wrapper {
+      animation: float-camera 6.5s ease-in-out infinite;
+    }
+    /* Pausa animaciones cuando el Hero no está en pantalla */
+    .hero-paused .camera-float-wrapper,
+    .hero-paused .scan-ring,
+    .hero-paused .ping-dot {
+      animation-play-state: paused !important;
+    }
+    @keyframes float-camera {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -8px, 0); }
+    }
+    /* Halo trasero mediante radial-gradient puro (0ms de costo vs filter: blur) */
+    .depth-layer-back {
+      transform: translateZ(-25px);
+      background: radial-gradient(closest-side, rgba(37, 99, 235, 0.38) 0%, rgba(34, 211, 238, 0.14) 55%, transparent 100%);
+    }
+    .depth-layer-mid { transform: translateZ(18px); }
+    .depth-layer-front { transform: translateZ(42px); }
+
+    .scan-ring {
+      animation: pulse-ring 3.6s var(--ease-out) infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.92); opacity: 0.65; }
+      70%, 100% { transform: scale(1.14); opacity: 0; }
+    }
+
+    /* ---------- Botón primario ---------- */
+    .btn-blue::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      box-shadow: 0 8px 24px -2px rgba(37, 99, 235, 0.6);
+      opacity: 0; transition: opacity 300ms var(--ease-out);
+    }
+    @media (hover: hover) { .btn-blue:hover::before { opacity: 1; } }
+
+    /* ---------- Controles del cotizador ---------- */
+    select.field {
+      -webkit-appearance: none; appearance: none; padding-right: 2.5rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.875rem center; background-size: 1rem;
+    }
+
+    .radio-dot, .check-box {
+      position: relative; flex-shrink: 0; width: 1.25rem; height: 1.25rem; border: 1.5px solid #cbd5e1; background: #fff;
+      transition: background-color 220ms var(--ease-out), border-color 220ms var(--ease-out);
+    }
+    .radio-dot { border-radius: 9999px; }
+    .radio-dot::after {
+      content: ''; position: absolute; inset: 3px; border-radius: 9999px; background: #2563eb;
+      opacity: 0; transform: scale(0.5); transition: transform 240ms var(--ease-out), opacity 180ms var(--ease-out);
+    }
+    .peer:checked + .radio-dot { border-color: #2563eb; }
+    .peer:checked + .radio-dot::after { opacity: 1; transform: scale(1); }
+
+    .check-box { display: grid; place-items: center; border-radius: 0.375rem; }
+    .check-box svg { width: 0.8rem; height: 0.8rem; color: #fff; opacity: 0; transform: scale(0.6); transition: transform 240ms var(--ease-out), opacity 180ms var(--ease-out); }
+    .peer:checked + .check-box { background: #2563eb; border-color: #2563eb; }
+    .peer:checked + .check-box svg { opacity: 1; transform: scale(1); }
+
+    .range { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; background: transparent; cursor: pointer; }
+    .range::-webkit-slider-runnable-track { height: 6px; border-radius: 9999px; background: linear-gradient(to right, #2563eb var(--p, 20%), #e2e8f0 var(--p, 20%)); }
+    .range::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 9999px;
+      background: #fff; border: 1px solid rgba(15, 23, 42, 0.1);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2), 0 4px 12px rgba(15, 23, 42, 0.15);
+      transition: transform 220ms var(--ease-out);
+    }
+    .range:active::-webkit-slider-thumb { transform: scale(1.12); }
+
+    .summary-card {
+      isolation: isolate; overflow: hidden; border-radius: 1.75rem;
+      background: linear-gradient(180deg, #121722 0%, #0b0e14 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 48px -24px rgba(2, 6, 23, 0.65);
+    }
+    .summary-card::before {
+      content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background: radial-gradient(60% 45% at 100% 0%, rgba(37, 99, 235, 0.25), transparent 70%);
+    }
+
+    /* ---------- Entrada escalonada del Hero ---------- */
+    .reveal { animation: fade-up 700ms var(--ease-out) both; }
+    @keyframes fade-up {
+      from { opacity: 0; transform: translate3d(0, 18px, 0); }
+      to { opacity: 1; transform: translate3d(0, 0, 0); }
+    }
+
+    .badge-bump { animation: bump 360ms var(--ease-out); }
+    @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+
+    .spinner { width: 1rem; height: 1rem; border-radius: 9999px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin 700ms linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toast { transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out); }
+    #toast[data-visible="false"] { opacity: 0; transform: translate3d(0, 12px, 0) scale(.97); pointer-events: none; }
+
+    dialog#dlg-devolucion { border: 0; padding: 0; background: transparent; max-width: 28rem; width: calc(100% - 2rem); }
+    dialog#dlg-devolucion[open] { animation: view-in 320ms var(--ease-out); }
+    dialog#dlg-devolucion::backdrop { background: rgba(15, 23, 42, .55); }
+
+    :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+
+    /* ---------- MODO NOCHE ---------- */
+    html.dark { color-scheme: dark; }
+    html.dark body, html.dark body.bg-slate-50 { background-color: #06080b !important; color: #e2e8f0; }
+    html.dark .card { background-color: #0f141d; border-color: rgba(255, 255, 255, 0.08); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7); }
+    html.dark .field { background-color: #161d2a; border-color: rgba(255, 255, 255, 0.12); color: #f8fafc; }
+    html.dark .field:hover { border-color: rgba(255, 255, 255, 0.25); }
+    html.dark .field::placeholder { color: #64748b; }
+    html.dark select option { background-color: #161d2a; color: #f8fafc; }
+    html.dark .choice { background-color: #121824; border-color: rgba(255, 255, 255, 0.1); color: #cbd5e1; }
+    html.dark .choice:hover { border-color: rgba(96, 165, 250, 0.4); }
+    html.dark .choice:has(:checked) { background-color: rgba(37, 99, 235, 0.15); border-color: #3b82f6; }
+    html.dark .radio-dot, html.dark .check-box { background-color: #161d2a; border-color: rgba(255, 255, 255, 0.28); }
+    html.dark .range::-webkit-slider-runnable-track { background: linear-gradient(to right, #3b82f6 var(--p, 20%), #2a3446 var(--p, 20%)); }
+
+    html.dark .text-slate-900 { color: #f8fafc !important; }
+    html.dark .text-slate-800, html.dark .text-slate-700, html.dark .text-slate-600 { color: #cbd5e1 !important; }
+    html.dark .text-slate-500 { color: #94a3b8 !important; }
+    html.dark .text-blue-700 { color: #93c5fd !important; }
+    html.dark .text-blue-600 { color: #60a5fa !important; }
+    html.dark .text-red-600 { color: #f87171 !important; }
+    html.dark #badge-carrito { color: #06080b !important; }
+
+    html.dark .bg-slate-50, html.dark .bg-slate-100 { background-color: #161d2a !important; }
+    html.dark .bg-slate-200 { background-color: #243044 !important; }
+    html.dark main .bg-white, html.dark dialog .bg-white { background-color: #0f141d !important; }
+    html.dark .bg-blue-50, html.dark .bg-blue-50\/70, html.dark .bg-blue-50\/50 { background-color: rgba(37, 99, 235, 0.16) !important; }
+    html.dark .chip.bg-slate-900 { background-color: #1e293b !important; }
+    html.dark .border-slate-100, html.dark .border-slate-200, html.dark .border-slate-200\/80 { border-color: rgba(255, 255, 255, 0.08) !important; }
+    html.dark .ring-slate-200 { --tw-ring-color: rgba(255, 255, 255, 0.12) !important; }
+
+    html.dark .filtro-btn.bg-slate-100:hover { background-color: rgba(37, 99, 235, 0.25) !important; }
+    html.dark .hover\:bg-white:hover, html.dark .hover\:bg-slate-100:hover, html.dark .hover\:bg-slate-50:hover { background-color: #1e293b; }
+    html.dark .btn-ghost { background-color: #161d2a; border-color: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
+    html.dark .btn-ghost:hover { background-color: #1e293b; }
+    html.dark .btn-danger { background-color: #161d2a; border-color: rgba(248, 113, 113, 0.35); color: #fca5a5; }
+    html.dark .btn-danger:hover { background-color: rgba(248, 113, 113, 0.12); }
+    html.dark .btn-dark { background-color: #2563eb; color: #ffffff; }
+    html.dark .btn-dark:hover { background-color: #3b82f6; }
+
+    /* ---------- Añadibles: seleccionados con la paleta de la barra de navegación ---------- */
+    .addon-btn {
+      position: relative; display: flex; flex-direction: column; gap: 0.25rem; width: 100%;
+      padding: 0.85rem 2.4rem 0.85rem 0.95rem; text-align: left; border-radius: 1rem;
+      background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a;
+      transition: background-color 220ms var(--ease-out), border-color 220ms var(--ease-out), color 220ms var(--ease-out), transform 160ms var(--ease-out), box-shadow 220ms var(--ease-out);
+    }
+    .addon-btn:active { transform: scale(0.98); }
+    .addon-btn .addon-desc { color: #64748b; }
+    .addon-btn .addon-check {
+      position: absolute; top: 0.8rem; right: 0.8rem; display: grid; place-items: center;
+      width: 1.25rem; height: 1.25rem; border-radius: 9999px; border: 1.5px solid #cbd5e1; color: transparent;
+      transition: background-color 220ms var(--ease-out), border-color 220ms var(--ease-out), color 220ms var(--ease-out);
+    }
+    @media (hover: hover) { .addon-btn:hover { border-color: #94a3b8; } }
+    .addon-btn[aria-checked="true"] {
+      background: rgba(6, 8, 11, 0.96); color: #ffffff; border-color: #60a5fa;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 3px rgba(96, 165, 250, 0.18);
+    }
+    .addon-btn[aria-checked="true"] .addon-desc { color: #94a3b8; }
+    .addon-btn[aria-checked="true"] .addon-check { background: #60a5fa; border-color: #60a5fa; color: #06080b; }
+    .addon-btn:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    html.dark .addon-btn { background: #161d2a; border-color: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
+    html.dark .addon-btn .addon-check { border-color: rgba(255, 255, 255, 0.28); }
+    html.dark .addon-btn[aria-checked="true"] { background: #06080b; color: #ffffff; border-color: #60a5fa; }
+
+    /* ---------- Reseñas, FAQ y modal con scroll ---------- */
+    .stars svg { flex-shrink: 0; }
+    #contenido-detalle { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .chev { transform: rotate(180deg); }
+    .chev { transition: transform 250ms var(--ease-out); }
+    html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.15) !important; }
+    html.dark .text-emerald-700 { color: #6ee7b7 !important; }
+    html.dark .text-emerald-600 { color: #34d399 !important; }
+
+    /* ---------- Comparador visual ---------- */
+    .cmp-row { transition: opacity 250ms var(--ease-out), background-color 250ms var(--ease-out), box-shadow 250ms var(--ease-out); }
+    .cmp-bar { transition: width 600ms var(--ease-out); }
+
+    /* ---------- Modal de Detalle de Producto ---------- */
+    dialog#dlg-detalle { border: 0; padding: 0; background: transparent; max-width: 52rem; width: calc(100% - 2rem); }
+    dialog#dlg-detalle[open] { animation: modal-pop 340ms var(--ease-out) both; }
+    dialog#dlg-detalle::backdrop { background: rgba(6, 8, 11, 0.7); backdrop-filter: blur(8px); }
+    @keyframes modal-pop {
+      from { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.96); }
+      to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+    }
+
+    /* ---------- Personaje Guía: Aegis Bot AEGIS BOT ---------- */
+    .sentinel-bot { animation: sentinel-bob 4s ease-in-out infinite; }
+    @keyframes sentinel-bob {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -6px, 0); }
+    }
+    .sentinel-eye { transform-origin: center; animation: sentinel-blink 5s infinite; }
+    @keyframes sentinel-blink {
+      0%, 46%, 50%, 96%, 100% { transform: scaleY(1); }
+      48%, 98% { transform: scaleY(0.1); }
+    }
+    .guide-bubble {
+      transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out);
+      transform-origin: bottom right;
+      background: rgba(255, 255, 255, 0.97); border: 1px solid rgba(226, 232, 240, 0.9); color: #334155;
+    }
+    html.dark .guide-bubble { background: rgba(15, 20, 29, 0.98); border-color: rgba(255, 255, 255, 0.1); color: #cbd5e1; }
+    .guide-bubble[data-hidden="true"] {
+      opacity: 0; transform: scale(0.9) translate3d(8px, 8px, 0); pointer-events: none;
+      visibility: hidden; transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out), visibility 0s linear 280ms;
+    }
+
+    /* Botones de opciones del Aegis Bot: colores explícitos en todos los estados (no dependen de clases generadas al vuelo) */
+    .guia-btn {
+      -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent;
+      border: 1px solid #cbd5e1; border-radius: 9999px; padding: 0.3rem 0.7rem;
+      font-size: 11px; font-weight: 600; line-height: 1.3; cursor: pointer;
+      background-color: #f1f5f9; color: #334155;
+      transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+    .guia-btn:hover { background-color: #e2e8f0; color: #0f172a; border-color: #94a3b8; }
+    .guia-btn:active { background-color: #cbd5e1; color: #0f172a; transform: scale(0.96); }
+    .guia-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    .guia-btn--primary { background-color: #2563eb; color: #ffffff; border-color: #2563eb; }
+    .guia-btn--primary:hover { background-color: #1d4ed8; color: #ffffff; border-color: #1d4ed8; }
+    .guia-btn--primary:active { background-color: #1e40af; color: #ffffff; border-color: #1e40af; }
+    html.dark .guia-btn { background-color: #1e293b; color: #e2e8f0; border-color: rgba(255, 255, 255, 0.14); }
+    html.dark .guia-btn:hover { background-color: #2b3a52; color: #ffffff; }
+    html.dark .guia-btn:active { background-color: #334155; color: #ffffff; }
+    html.dark .guia-btn--primary { background-color: #2563eb; color: #ffffff; border-color: #2563eb; }
+    html.dark .guia-btn--primary:hover { background-color: #3b82f6; border-color: #3b82f6; }
+      
+  </style>
+
+  <style type="text/tailwindcss">
+    @layer components {
+      .field { @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 transition-colors duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10; }
+      .label { @apply mb-1.5 block text-xs font-semibold text-slate-600; }
+      .btn { @apply relative inline-flex select-none items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-[transform,background-color,color,border-color,opacity] duration-200 ease-spring active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50; }
+      .btn-dark { @apply bg-slate-900 text-white hover:bg-blue-600; }
+      .btn-blue { @apply bg-blue-600 text-white hover:bg-blue-500; }
+      .btn-ghost { @apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-50; }
+      .btn-danger { @apply border border-red-200 bg-white text-red-600 hover:bg-red-50; }
+      .card { @apply rounded-3xl border border-slate-200/80 bg-white shadow-sm; }
+      .chip { @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider; }
+      .filtro-btn { @apply whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-200 ease-spring active:scale-[0.96]; }
+      .choice { @apply flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition-[transform,background-color,border-color] duration-200 ease-spring hover:border-slate-300 active:scale-[0.985] has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-600 has-[:focus-visible]:ring-offset-2; }
+    }
+  </style>
+</head>
+
+<body class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800">
+
+  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-lg">Saltar al contenido</a>
+
+  <!-- HEADER: Material translúcido con Modo Día/Noche y Pestaña Comparador -->
+  <header id="encabezado" data-scrolled="false" class="material-header sticky top-0 z-50 text-white">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 pb-2 pt-4 sm:px-6">
+      <a href="#/catalogo" onclick="irAlCatalogo(event)" aria-label="AEGIS Control — ir al catálogo" class="flex items-center gap-3 rounded-xl outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-blue-400">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-400/25">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3l8 4v5c0 5.25-3.4 9.74-8 11-4.6-1.26-8-5.75-8-11V7l8-4z"/>
+            <circle cx="12" cy="12" r="3" stroke-width="1.75"/>
+          </svg>
+        </span>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-[18px] font-bold leading-tight tracking-[-0.03em] text-white">AEGIS <span class="font-normal text-blue-400">Control</span></h1>
+            <span class="hidden rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-slate-300 sm:inline-block">ISO 9001</span>
+          </div>
+          <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Videovigilancia &amp; Blindaje Electrónico</p>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-2.5">
+        <!-- Botón Modo Día / Noche -->
+        <button id="btn-tema" type="button" onclick="toggleTema()" aria-label="Cambiar entre modo día y noche"
+          class="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-slate-200 transition-transform duration-200 ease-spring hover:bg-white/[0.14] active:scale-90">
+          <!-- Icono Sol (visible en modo oscuro) -->
+          <svg id="icono-sol" class="hidden h-5 w-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/></svg>
+          <!-- Icono Luna (visible en modo claro) -->
+          <svg id="icono-luna" class="h-5 w-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+        </button>
+
+        <button id="btn-nav-carrito" data-testid="nav-cart-btn" onclick="cambiarVista('carrito')" aria-label="Abrir carrito" class="btn btn-blue h-10 px-4">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          <span class="hidden sm:inline">Carrito</span>
+          <span id="badge-carrito" data-testid="cart-badge" aria-live="polite"
+            class="tnum absolute -right-1.5 -top-1.5 grid min-w-[1.25rem] place-items-center rounded-full bg-white px-1 text-[10px] font-bold leading-5 text-slate-900 ring-2 ring-carbon-900">0</span>
+        </button>
+      </div>
+    </div>
+
+    <nav class="no-scrollbar overflow-x-auto" aria-label="Secciones">
+      <div role="tablist" class="relative mx-auto flex max-w-7xl gap-8 whitespace-nowrap px-4 text-sm font-medium sm:px-6">
+        <button role="tab" id="tab-catalogo" aria-selected="true" aria-controls="vista-catalogo" onclick="cambiarVista('catalogo')" class="tab">Catálogo</button>
+        <button role="tab" id="tab-comparador" aria-selected="false" aria-controls="vista-comparador" onclick="cambiarVista('comparador')" class="tab">Comparar Modelos</button>
+        <button role="tab" id="tab-cotizador" aria-selected="false" aria-controls="vista-cotizador" onclick="cambiarVista('cotizador')" class="tab">Cotizador</button>
+        <button role="tab" id="tab-carrito" aria-selected="false" aria-controls="vista-carrito" onclick="cambiarVista('carrito')" class="tab">Agenda y Pago</button>
+        <button role="tab" id="tab-pedidos" aria-selected="false" aria-controls="vista-pedidos" onclick="cambiarVista('pedidos')" class="tab">Gestión y Soporte</button>
+        <span id="tab-indicador" aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 h-0.5 w-px origin-left bg-blue-500"></span>
+      </div>
+    </nav>
+  </header>
+
+  <!-- HERO: Texto a la izquierda + Escenario 3D de Cámara a la derecha -->
+  <section id="hero" aria-labelledby="hero-titulo"
+    class="hero-bg-mesh relative isolate flex min-h-[max(38rem,calc(100svh-6.5rem))] items-center overflow-hidden border-b border-white/10">
+
+    <!-- Grilla ligera sin mask-image costoso -->
+    <div class="pointer-events-none absolute inset-0 -z-10 opacity-35 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:4rem_4rem]" aria-hidden="true"></div>
+
+    <div class="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-6 py-16 lg:grid-cols-12 lg:gap-8 lg:py-20">
+
+      <!-- COLUMNA IZQUIERDA -->
+      <div class="flex flex-col items-start text-left lg:col-span-7">
+
+        <h2 id="hero-titulo" class="reveal text-5xl font-black uppercase leading-[0.94] tracking-[-0.04em] text-white sm:text-6xl xl:text-7xl" style="animation-delay:70ms">
+          <span class="block">DEFIENDE LO</span>
+          <span class="block">QUE MÁS</span>
+          <span class="mt-1 block bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">IMPORTA.</span>
+        </h2>
+
+        <p class="reveal mt-6 max-w-xl text-base leading-relaxed text-slate-300 sm:text-lg" style="animation-delay:140ms">
+          Soluciones profesionales diseñadas para blindar tu hogar, negocio, oficina o industria:
+          <strong class="font-semibold text-white">cámaras de videovigilancia CCTV 4K, monitoreo móvil en tiempo real, respaldo energético e instalación certificada</strong> con precios transparentes desde el primer clic.
+        </p>
+
+        <div class="reveal mt-9 flex w-full flex-col gap-4 sm:w-auto sm:flex-row" style="animation-delay:210ms">
+          <button type="button" onclick="cambiarVista('cotizador')"
+            class="btn btn-blue group px-8 py-4 text-base font-bold hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-blue-400">
+            Cotizar mi Sistema
+            <svg class="h-4 w-4 transition-transform duration-300 ease-spring group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-6-6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" onclick="verCatalogo()"
+            class="btn border border-white/15 bg-white/[0.07] px-8 py-4 text-base font-medium text-white hover:-translate-y-0.5 hover:bg-white/[0.14] active:translate-y-0 focus-visible:outline-blue-400">
+            Explorar Equipos
+          </button>
+        </div>
+
+        <!-- Sellos de Confianza -->
+        <div class="reveal mt-10 grid grid-cols-3 gap-6 border-t border-white/10 pt-6 text-left sm:gap-10" style="animation-delay:280ms">
+          <div>
+            <p class="tnum text-xl font-extrabold text-white sm:text-2xl">4K QHD</p>
+            <p class="mt-0.5 text-xs text-slate-400">Óptica nocturna a color</p>
+          </div>
+          <div>
+            <p class="tnum text-xl font-extrabold text-white sm:text-2xl">6 Meses</p>
+            <p class="mt-0.5 text-xs text-slate-400">Garantía directa escrita</p>
+          </div>
+          <div>
+            <p class="tnum text-xl font-extrabold text-white sm:text-2xl">24 / 7</p>
+            <p class="mt-0.5 text-xs text-slate-400">Monitoreo móvil cifrado</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: Escenario 3D Optimizado (Sin backdrop-blur anidados) -->
+      <div class="reveal camera-stage relative flex items-center justify-center lg:col-span-5" style="animation-delay:180ms">
+        <div class="camera-float-wrapper w-full max-w-md">
+          <div id="camera-3d-rig" class="camera-3d-rig relative w-full">
+
+            <!-- Halo luminoso trasero por gradiente nativo (0 costo de blur) -->
+            <div class="depth-layer-back pointer-events-none absolute -inset-8 rounded-full" aria-hidden="true"></div>
+
+            <!-- Chasis Principal de la Tarjeta 3D -->
+            <div class="relative overflow-hidden rounded-[2rem] border border-white/15 bg-gradient-to-b from-slate-800/95 via-slate-900 to-carbon-950 p-6 shadow-2xl">
+
+              <div class="mb-4 flex items-center justify-between text-xs">
+                <span class="inline-flex items-center gap-2 font-semibold text-emerald-400">
+                  <span class="ping-dot h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  ENLACE CIFRADO ACTIVO
+                </span>
+                <span class="tnum rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px] text-slate-300">CAM-01 • 60 FPS</span>
+              </div>
+
+              <!-- Imagen Realista de Cámara CCTV -->
+              <div class="depth-layer-mid relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-white/10">
+                <img
+                  src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+                  alt="Cámara de videovigilancia profesional AEGIS Control 4K en operación"
+                  decoding="async"
+                  fetchpriority="high"
+                  class="h-full w-full object-cover object-center brightness-95 contrast-110 transition-transform duration-500 ease-spring hover:scale-105"
+                />
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-carbon-950 via-transparent to-slate-950/30"></div>
+
+                <!-- Retícula óptica HUD -->
+                <div class="pointer-events-none absolute inset-4 rounded-xl border border-cyan-400/20">
+                  <span class="scan-ring absolute right-3 top-3 h-6 w-6 rounded-full border border-cyan-400/60"></span>
+                  <div class="absolute bottom-3 left-3 flex items-center gap-2 rounded-lg bg-slate-950/90 px-2.5 py-1 text-[11px] font-medium text-cyan-300">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    Detección IA • Sin puntos ciegos
+                  </div>
+                </div>
+              </div>
+
+              <!-- Especificaciones técnicas inferiores -->
+              <div class="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-white/[0.04] p-3 text-center ring-1 ring-white/5">
+                <div>
+                  <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Protección</span>
+                  <span class="tnum text-sm font-bold text-white">IP67 Exterior</span>
+                </div>
+                <div class="border-x border-white/10">
+                  <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Cifrado</span>
+                  <span class="tnum text-sm font-bold text-cyan-300">AES-256</span>
+                </div>
+                <div>
+                  <span class="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Respaldo</span>
+                  <span class="tnum text-sm font-bold text-white">Nube + NVR</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta Flotante Frontal (+42px Z) -->
+            <div class="depth-layer-front pointer-events-none absolute -bottom-5 -left-4 hidden items-center gap-3 rounded-2xl border border-white/15 bg-slate-900/95 px-4 py-3 text-white shadow-xl sm:flex">
+              <div class="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-white">Serie AEGIS Pro 4K</p>
+                <p class="text-[11px] text-slate-400">Instalación limpia bajo norma ISO</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <main id="contenido" class="scroll-mt-28 mx-auto w-full max-w-7xl flex-grow px-4 py-12 sm:px-6">
+
+    <!-- Toast -->
+    <div id="toast" role="status" aria-live="polite" data-visible="false"
+      class="fixed bottom-5 left-5 z-[55] max-w-[calc(100%-6rem)] sm:max-w-sm rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-3 text-sm font-medium text-white shadow-2xl"></div>
+
+    <!-- ========== VISTA 1: CATÁLOGO CON IMÁGENES DE CÁMARAS ========== -->
+    <section id="vista-catalogo" class="view space-y-8" role="tabpanel" aria-labelledby="tab-catalogo">
+      <div class="flex flex-col justify-between gap-4 border-b border-slate-200/80 pb-6 sm:flex-row sm:items-end">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Catálogo Certificado</span>
+          <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Sistemas de Videovigilancia y Servicios</h2>
+        </div>
+        <p class="max-w-md text-sm text-slate-500">Precios transparentes antes de IVA. Todos los equipos incluyen garantía directa de 6 meses y soporte técnico.</p>
+      </div>
+
+      <!-- Búsqueda + filtros por facetas -->
+      <div class="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+        <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <div class="relative w-full sm:w-80">
+          <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
+          <input type="search" id="input-busqueda" data-testid="search-input" oninput="renderCatalogo()" aria-label="Buscar en el catálogo"
+            placeholder="Buscar cámaras, paquetes, instalación…" class="field pl-10" />
+        </div>
+        <label class="sr-only" for="sel-orden">Ordenar catálogo</label>
+        <select id="sel-orden" onchange="cambiarOrden(this.value)" class="field sm:w-52">
+          <option value="relevancia">Ordenar: relevancia</option>
+          <option value="calificacion">Mejor calificados</option>
+          <option value="precio-asc">Precio: menor a mayor</option>
+          <option value="precio-desc">Precio: mayor a menor</option>
+        </select>
+      </div>
+        <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0" role="group" aria-label="Filtrar por categoría">
+          <button onclick="filtrarCategoria('todos')" class="filtro-btn" data-cat="todos">Todos</button>
+          <button onclick="filtrarCategoria('paquete')" class="filtro-btn" data-cat="paquete">Paquetes CCTV</button>
+          <button onclick="filtrarCategoria('producto')" class="filtro-btn" data-cat="producto">Equipos individuales</button>
+          <button onclick="filtrarCategoria('servicio')" class="filtro-btn" data-cat="servicio">Servicios técnicos</button>
+        </div>
+      </div>
+
+      <div id="grid-catalogo" class="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></div>
+
+      <!-- Cómo funciona -->
+      <section aria-labelledby="como-titulo" class="space-y-5 pt-10">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Proceso transparente</span>
+          <h3 id="como-titulo" class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">Así funciona</h3>
+        </div>
+        <ol class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <li class="card p-5"><span class="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">1</span><h4 class="mt-3 text-sm font-bold text-slate-900">Cotiza o elige un paquete</h4><p class="mt-1 text-xs leading-relaxed text-slate-500">Ves el desglose y el IVA antes de pagar.</p></li>
+          <li class="card p-5"><span class="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">2</span><h4 class="mt-3 text-sm font-bold text-slate-900">Agenda tu instalación</h4><p class="mt-1 text-xs leading-relaxed text-slate-500">Los horarios ocupados se bloquean automáticamente.</p></li>
+          <li class="card p-5"><span class="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">3</span><h4 class="mt-3 text-sm font-bold text-slate-900">Instalamos y configuramos</h4><p class="mt-1 text-xs leading-relaxed text-slate-500">Montaje, cableado y app en tu celular.</p></li>
+          <li class="card p-5"><span class="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">4</span><h4 class="mt-3 text-sm font-bold text-slate-900">Garantía y soporte</h4><p class="mt-1 text-xs leading-relaxed text-slate-500">6 meses por escrito y seguimiento desde Gestión y Soporte.</p></li>
+        </ol>
+      </section>
+
+      <!-- Preguntas frecuentes -->
+      <section aria-labelledby="faq-titulo" class="space-y-5 pt-6">
+        <h3 id="faq-titulo" class="text-2xl font-extrabold tracking-tight text-slate-900">Preguntas frecuentes</h3>
+        <div class="space-y-3">
+          <details class="card px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-slate-900">¿Los precios incluyen IVA?<svg class="chev h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary><p class="mt-3 text-sm leading-relaxed text-slate-500">El catálogo muestra el precio antes de IVA. El 16% se suma y se desglosa en el cotizador y en el resumen de pago, antes de que confirmes.</p></details>
+          <details class="card px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-slate-900">¿Qué garantía tienen los equipos y la instalación?<svg class="chev h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary><p class="mt-3 text-sm leading-relaxed text-slate-500">Seis meses por defectos de fábrica. La instalación también incluye garantía escrita de 6 meses. Puedes solicitar una devolución dentro de ese periodo desde Gestión y Soporte.</p></details>
+          <details class="card px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-slate-900">¿Puedo cancelar o reprogramar mi cita?<svg class="chev h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary><p class="mt-3 text-sm leading-relaxed text-slate-500">Sí, con al menos 24 horas de anticipación. Con menos tiempo el sistema no permite la cancelación para respetar la agenda del técnico.</p></details>
+          <details class="card px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-slate-900">¿Qué incluye el servicio de instalación?<svg class="chev h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary><p class="mt-3 text-sm leading-relaxed text-slate-500">Tendido oculto de cable, fijación en muro o losa, configuración de la app en hasta 4 celulares y calibración del ángulo de cada cámara. Consulta el detalle en la ficha del servicio.</p></details>
+          <details class="card px-5 py-4"><summary class="flex cursor-pointer items-center justify-between gap-4 text-sm font-semibold text-slate-900">¿Cómo se verifican las reseñas?<svg class="chev h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary><p class="mt-3 text-sm leading-relaxed text-slate-500">Una reseña lleva la insignia «Compra verificada» cuando el producto aparece en un pedido del autor. Las demás se muestran como «sin compra verificada». Nunca editamos ni filtramos el texto de las opiniones.</p></details>
+        </div>
+      </section>
+
+      <section id="bloque-contacto" class="card hidden p-6 sm:p-8" aria-label="Contacto y cobertura"></section>
+    </section>
+
+    <!-- ========== VISTA 1.5: COMPARADOR ESTILO APPLE + RECOMENDADOR AEGIS BOT ========== -->
+    <section id="vista-comparador" class="view hidden space-y-8" role="tabpanel" aria-labelledby="tab-comparador">
+      <div class="mx-auto max-w-2xl space-y-3 text-center">
+        <span class="text-xs font-bold uppercase tracking-widest text-blue-600">Decisión Inteligente</span>
+        <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">¿Cuál sistema AEGIS es ideal para ti?</h2>
+        <p class="text-sm text-slate-500">Compara frente a frente las especificaciones ópticas o deja que Aegis Bot elija por ti según tu presupuesto.</p>
+      </div>
+
+      <!-- Barra de Asesoría Inteligente de Aegis Bot + Switch de Diferencias -->
+      <div class="card flex flex-col items-stretch justify-between gap-4 p-5 sm:flex-row sm:items-center">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="mr-1 text-xs font-extrabold uppercase tracking-wider text-blue-600">🤖 Presupuesto máximo:</span>
+          <button type="button" data-presupuesto="1800" aria-pressed="false" onclick="recomendarPorPresupuesto(1800)" class="filtro-btn bg-slate-100 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700">Hasta $1,800</button>
+          <button type="button" data-presupuesto="4500" aria-pressed="false" onclick="recomendarPorPresupuesto(4500)" class="filtro-btn bg-slate-100 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700">Hasta $4,500 (Hogar)</button>
+          <button type="button" data-presupuesto="15000" aria-pressed="false" onclick="recomendarPorPresupuesto(15000)" class="filtro-btn bg-slate-100 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700">PyME Completa (hasta $15,000)</button>
+          <button type="button" id="btn-sin-limite" onclick="limpiarPresupuesto()" class="hidden text-xs font-semibold text-blue-600 hover:underline">✕ Quitar límite</button>
+        </div>
+      </div>
+
+      <!-- Banner de veredicto de Aegis Bot (se muestra al elegir presupuesto) -->
+      <div id="banner-recomendacion" class="hidden rounded-2xl border border-blue-500/30 bg-blue-600/10 p-4 text-sm text-slate-800"></div>
+
+      <!-- Selectores de Modelos a Comparar -->
+      <div id="contenedor-comparador"></div>
+    </section>
+
+    <!-- ========== VISTA 2: COTIZADOR ========== -->
+    <section id="vista-cotizador" class="view hidden" role="tabpanel" aria-labelledby="tab-cotizador">
+      <div class="grid grid-cols-1 items-start gap-10 lg:grid-cols-3">
+
+        <!-- Configuración -->
+        <div class="card space-y-12 p-8 sm:p-12 lg:col-span-2">
+          <header class="space-y-2">
+            <h2 class="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-slate-900">Diseña tu sistema de protección</h2>
+            <p class="text-[15px] leading-relaxed text-slate-500">Configuración técnica transparente y cálculo en tiempo real.</p>
+          </header>
+
+          <fieldset>
+            <legend class="mb-4 text-[15px] font-semibold tracking-[-0.01em] text-slate-900">1. Entorno de instalación</legend>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label class="choice">
+                <input type="radio" name="inmueble" value="Hogar" checked onchange="recalcularCotizador()" class="peer sr-only" />
+                <span class="radio-dot" aria-hidden="true"></span>
+                <span><span class="block text-slate-900">Residencial (Hogar)</span><span class="mt-0.5 block text-xs font-normal text-slate-500">Instalación estándar</span></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="inmueble" value="PyME" onchange="recalcularCotizador()" class="peer sr-only" />
+                <span class="radio-dot" aria-hidden="true"></span>
+                <span><span class="block text-slate-900">Comercial (PyME / Industria)</span><span class="mt-0.5 block text-xs font-normal text-slate-500">+10% en instalación por metraje</span></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="grid grid-cols-1 gap-10 sm:grid-cols-2">
+            <div>
+              <label for="cot-camaras" class="mb-4 flex items-center justify-between text-[15px] font-semibold tracking-[-0.01em] text-slate-900">
+                2. Número de cámaras
+                <span id="lbl-num-camaras" class="tnum rounded-lg bg-blue-50 px-2.5 py-0.5 text-sm font-bold text-blue-700">4</span>
+              </label>
+              <input type="range" id="cot-camaras" data-testid="quoter-cameras" min="1" max="16" value="4" style="--p:20%" oninput="recalcularCotizador()" class="range" />
+              <div class="mt-2 flex justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400"><span>1 unidad</span><span>16 unidades</span></div>
+            </div>
+            <div>
+              <label for="cot-resolucion" class="mb-4 block text-[15px] font-semibold tracking-[-0.01em] text-slate-900">3. Calidad de imagen</label>
+              <select id="cot-resolucion" onchange="recalcularCotizador()" class="field">
+                <option value="1080">Full HD 1080p (Estándar)</option>
+                <option value="2k">2K QHD + Visión nocturna a color</option>
+                <option value="4k">4K Ultra HD + Audio bidireccional</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label for="cot-cableado" class="mb-4 block text-[15px] font-semibold tracking-[-0.01em] text-slate-900">4. Instalación</label>
+            <select id="cot-cableado" onchange="recalcularCotizador()" class="field">
+              <option value="instalacion">Instalación certificada ISO</option>
+              <option value="solo">Solo equipo (envío a domicilio sin instalación)</option>
+            </select>
+          </div>
+
+          <fieldset>
+            <legend class="mb-4 text-[15px] font-semibold tracking-[-0.01em] text-slate-900">5. Infraestructura adicional</legend>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <label class="choice justify-between">
+                <span><span class="block text-slate-900">Disco duro 1 TB</span><span class="tnum mt-0.5 block text-xs font-normal text-slate-500">+ $1,100.00</span></span>
+                <input type="checkbox" id="acc-hdd" checked onchange="recalcularCotizador()" class="peer sr-only" />
+                <span class="check-box" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg></span>
+              </label>
+              <label class="choice justify-between">
+                <span><span class="block text-slate-900">UPS con batería</span><span class="tnum mt-0.5 block text-xs font-normal text-slate-500">+ $1,450.00</span></span>
+                <input type="checkbox" id="acc-ups" onchange="recalcularCotizador()" class="peer sr-only" />
+                <span class="check-box" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg></span>
+              </label>
+              <label class="choice justify-between">
+                <span><span class="block text-slate-900">App móvil</span><span class="tnum mt-0.5 block text-xs font-normal text-slate-500">+ $400.00</span></span>
+                <input type="checkbox" id="acc-app" onchange="recalcularCotizador()" class="peer sr-only" />
+                <span class="check-box" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg></span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
+
+        <!-- Resumen: tarjeta de producto premium -->
+        <aside class="summary-card relative p-8 text-white sm:p-10 lg:sticky lg:top-32" aria-label="Resumen de cotización">
+          <div>
+            <span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-400">Presupuesto técnico</span>
+            <h3 class="mt-2 text-2xl font-semibold tracking-[-0.025em]">Resumen</h3>
+          </div>
+
+          <dl class="tnum mt-8 divide-y divide-white/[.06] text-sm">
+            <div class="flex items-baseline justify-between py-3.5"><dt class="text-slate-400">Equipamiento</dt><dd id="res-equipo" class="font-medium text-slate-100">$0.00</dd></div>
+            <div class="flex items-baseline justify-between py-3.5"><dt class="text-slate-400">Instalación certificada</dt><dd id="res-instalacion" class="font-medium text-slate-100">$0.00</dd></div>
+            <div class="flex items-baseline justify-between py-3.5"><dt class="text-slate-400">Complementos</dt><dd id="res-accesorios" class="font-medium text-slate-100">$0.00</dd></div>
+            <div class="flex items-baseline justify-between py-3.5"><dt class="text-slate-300">Subtotal</dt><dd id="res-subtotal" class="font-medium text-white">$0.00</dd></div>
+            <div class="flex items-baseline justify-between py-3.5"><dt class="text-slate-400">IVA (16%)</dt><dd id="res-iva" class="font-medium text-slate-100">$0.00</dd></div>
+          </dl>
+
+          <div class="mt-10">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Total con IVA</p>
+            <p id="res-total" data-testid="quoter-total" class="tnum mt-2 text-[2rem] font-semibold leading-none tracking-[-0.035em] text-white sm:text-[2.25rem]">$0.00</p>
+          </div>
+
+          <button onclick="agregarCotizacionAlCarrito()" data-testid="add-quote-btn" class="btn btn-blue mt-8 w-full py-3.5 text-[15px]">Agregar al carrito</button>
+          <button type="button" data-wa onclick="enviarCotizacionWhatsApp()" class="btn mt-3 hidden w-full border border-white/15 bg-white/[0.07] py-3 text-sm text-white hover:bg-white/[0.14]">Enviar esta cotización por WhatsApp</button>
+          <p class="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+            Pago seguro · Garantía de 6 meses
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ========== VISTA 3: CARRITO + LOGÍSTICA + CHECKOUT ========== -->
+    <section id="vista-carrito" class="view hidden" role="tabpanel" aria-labelledby="tab-carrito">
+      <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+
+        <div class="space-y-8 lg:col-span-2">
+          <div class="card p-6 sm:p-8">
+            <h2 class="mb-5 text-lg font-bold text-slate-900">Productos y servicios en tu carrito</h2>
+            <div id="lista-carrito" class="space-y-1"></div>
+            <div id="panel-addons" class="mt-6 hidden border-t border-slate-100 pt-5" role="group" aria-label="Completa tu sistema"></div>
+          </div>
+
+          <div id="panel-logistica" class="card space-y-5 p-6 sm:p-8">
+            <h3 class="text-lg font-bold text-slate-900">Programación logística</h3>
+
+            <div id="bloque-entrega-producto" class="flex items-start gap-4 rounded-2xl bg-blue-50/70 p-4">
+              <svg class="mt-0.5 h-6 w-6 shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>
+              <div>
+                <h4 class="text-sm font-bold text-slate-900">Entrega de equipos</h4>
+                <p class="mt-0.5 text-xs text-slate-600">Fecha propuesta por el sistema: <strong id="fecha-entrega-sistema" class="text-blue-700">Cargando…</strong></p>
+              </div>
+            </div>
+
+            <div id="bloque-agenda-servicio" class="hidden space-y-4 rounded-2xl bg-slate-50 p-4">
+              <div class="flex items-start gap-4">
+                <svg class="mt-0.5 h-6 w-6 shrink-0 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <div>
+                  <h4 class="text-sm font-bold text-slate-900">Agenda tu cita de instalación</h4>
+                  <p class="text-xs text-slate-600">Selecciona fecha y horario para recibir a nuestros técnicos. Los horarios ocupados se bloquean automáticamente.</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="input-fecha-instalacion" class="label">Fecha de instalación</label>
+                  <input type="date" id="input-fecha-instalacion" data-testid="install-date-input" onchange="validarDisponibilidadHorario()" class="field" />
+                </div>
+                <div>
+                  <label for="input-hora-instalacion" class="label">Bloque de horario</label>
+                  <select id="input-hora-instalacion" data-testid="install-time-select" class="field">
+                    <option value="09:00" data-label="09:00 – 12:00 hrs · Matutino">09:00 – 12:00 hrs · Matutino</option>
+                    <option value="13:00" data-label="13:00 – 16:00 hrs · Vespertino">13:00 – 16:00 hrs · Vespertino</option>
+                    <option value="16:30" data-label="16:30 – 19:30 hrs · Tarde">16:30 – 19:30 hrs · Tarde</option>
+                  </select>
+                </div>
+              </div>
+              <p id="msg-disponibilidad" class="text-xs font-medium" role="status"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkout -->
+        <div class="card h-fit space-y-5 p-6 sm:p-8 lg:sticky lg:top-32">
+          <h3 class="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <svg class="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+            Resumen y pago
+          </h3>
+
+          <dl class="tnum space-y-2 rounded-2xl bg-slate-50 p-4 text-sm">
+            <div class="flex justify-between"><dt class="text-slate-500">Subtotal</dt><dd id="chk-subtotal">$0.00</dd></div>
+            <div class="flex justify-between"><dt class="text-slate-500">IVA (16%)</dt><dd id="chk-iva">$0.00</dd></div>
+            <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900"><dt>Total a pagar</dt><dd id="chk-total" data-testid="checkout-total">$0.00 MXN</dd></div>
+          </dl>
+
+          <button type="button" data-wa onclick="enviarCarritoWhatsApp()" class="btn btn-ghost hidden w-full text-xs">¿Dudas antes de pagar? Escríbenos por WhatsApp</button>
+
+          <form id="form-checkout" onsubmit="procesarPago(event)" class="space-y-4 text-sm" novalidate>
+            <div>
+              <label for="chk-nombre" class="label">Nombre completo o razón social *</label>
+              <input type="text" id="chk-nombre" required autocomplete="name" placeholder="Abarrotes La Estrella / Juan Pérez" class="field" />
+            </div>
+            <div>
+              <label for="chk-email" class="label">Correo electrónico (envío de CFDI y folio) *</label>
+              <input type="email" id="chk-email" required autocomplete="email" placeholder="cliente@ejemplo.com" class="field" />
+            </div>
+            <div>
+              <label for="chk-direccion" class="label">Dirección de entrega / instalación *</label>
+              <input type="text" id="chk-direccion" required autocomplete="street-address" placeholder="Calle, número, alcaldía/municipio, C.P." class="field" />
+            </div>
+            <div>
+              <label for="chk-metodo" class="label">Método de pago</label>
+              <select id="chk-metodo" onchange="toggleCamposTarjeta()" class="field">
+                <option value="Tarjeta">Tarjeta de crédito / débito (Visa / Mastercard)</option>
+                <option value="MercadoPago">Mercado Pago / PayPal</option>
+                <option value="SPEI_CoDi">Transferencia SPEI / CoDi</option>
+              </select>
+            </div>
+            <div id="campos-tarjeta" class="grid grid-cols-3 gap-2">
+              <input type="text" id="chk-num-tarjeta" inputmode="numeric" autocomplete="cc-number" maxlength="16" placeholder="Número de tarjeta" aria-label="Número de tarjeta" class="field col-span-2" />
+              <input type="password" id="chk-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV" aria-label="CVV" class="field" />
+            </div>
+
+            <label class="flex cursor-pointer items-start gap-3 pt-1 text-xs leading-relaxed text-slate-600">
+              <input type="checkbox" id="chk-legal" required class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+              <span>Acepto los términos de garantía de 6 meses (LFPC/PROFECO), la política de cancelación (≥ 24 hrs) y el Aviso de Privacidad (derechos ARCO — LFPDPPP).</span>
+            </label>
+
+            <button type="submit" id="btn-pagar" data-testid="pay-submit-btn" class="btn btn-blue w-full py-3.5">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+              <span id="btn-pagar-label">Confirmar y pagar</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== VISTA 4: PEDIDOS ========== -->
+    <section id="vista-pedidos" class="view hidden space-y-6" role="tabpanel" aria-labelledby="tab-pedidos">
+      <div class="card p-6 sm:p-8">
+        <h2 class="text-xl font-bold tracking-tight text-slate-900">Estatus, cancelaciones y devoluciones</h2>
+        <p class="mt-1 max-w-3xl text-sm leading-relaxed text-slate-500">
+          Las citas de instalación solo pueden cancelarse con al menos <strong class="text-slate-700">24 horas de anticipación</strong>, y los equipos cuentan con <strong class="text-slate-700">6 meses de garantía</strong> por defectos de fábrica.
+        </p>
+      </div>
+      <div id="lista-pedidos" class="space-y-4"></div>
+    </section>
+  </main>
+
+  <!-- Diálogo de devolución -->
+  <dialog id="dlg-devolucion" aria-labelledby="dlg-titulo">
+    <form method="dialog" id="form-devolucion" onsubmit="confirmarDevolucion(event)" class="card space-y-4 p-6 shadow-2xl">
+      <h3 id="dlg-titulo" class="text-lg font-bold text-slate-900">Solicitar devolución</h3>
+      <p class="text-sm text-slate-500">Indica el motivo (defecto de fábrica o fallo técnico dentro de la garantía de 6 meses).</p>
+      <div>
+        <label for="dlg-motivo" class="label">Motivo</label>
+        <textarea id="dlg-motivo" rows="3" required class="field resize-none"></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="document.getElementById('dlg-devolucion').close()" class="btn btn-ghost">Cancelar</button>
+        <button type="submit" class="btn btn-dark">Enviar solicitud</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Diálogo de Detalles Técnicos del Producto/Paquete (Estilo E-commerce / Apple) -->
+  <dialog id="dlg-detalle" aria-labelledby="det-nombre" onclick="if(event.target===this)this.close()">
+    <div id="contenido-detalle" class="card overflow-hidden shadow-2xl"></div>
+  </dialog>
+
+  <!-- Personaje Guía Interactivo: AEGIS BOT -->
+  <aside id="aegis-guia" class="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3" aria-label="Asistente virtual Aegis Bot">
+    <div id="burbuja-guia" data-hidden="true" class="guide-bubble max-w-[18rem] rounded-2xl p-4 text-xs shadow-xl">
+      <div class="flex items-center justify-between gap-2 pb-1.5">
+        <span class="font-extrabold uppercase tracking-wider text-blue-600">🤖 Aegis Bot • Guía AEGIS</span>
+        <button type="button" onclick="toggleBurbujaGuia()" class="text-slate-400 hover:text-slate-600" aria-label="Minimizar guía">✕</button>
+      </div>
+      <p id="texto-guia" class="leading-relaxed text-slate-700" aria-live="polite"></p>
+      <div id="guia-opciones" class="mt-3 flex flex-wrap gap-1.5"></div>
+    </div>
+
+    <button type="button" data-wa onclick="abrirWhatsApp('Hola, tengo una duda sobre los sistemas de videovigilancia AEGIS.')" class="btn hidden bg-emerald-500 px-4 py-2.5 text-xs text-white shadow-lg hover:bg-emerald-400">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m-9 6l1.5-4.2A8 8 0 1112 20a8 8 0 01-3.8-.95z"/></svg>
+      Escríbenos por WhatsApp
+    </button>
+
+    <button type="button" id="btn-aegis-bot" aria-expanded="false" aria-controls="burbuja-guia" onclick="toggleBurbujaGuia()" aria-label="Abrir o cerrar consejos de Aegis Bot"
+      class="sentinel-bot group relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-blue-400/30 bg-slate-900 text-blue-400 shadow-[0_12px_30px_-6px_rgba(37,99,235,0.55)] transition-transform hover:scale-105 active:scale-95">
+      <span class="absolute -right-1 -top-1 flex h-3.5 w-3.5">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75"></span>
+        <span class="relative inline-flex h-3.5 w-3.5 rounded-full bg-cyan-400"></span>
+      </span>
+      <svg class="h-9 w-9" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <rect x="6" y="10" width="36" height="28" rx="10" fill="#0f172a" stroke="#38bdf8" stroke-width="2.2"/>
+        <path d="M18 6h12M24 6v4" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round"/>
+        <g class="sentinel-eye">
+          <circle cx="18" cy="24" r="3.5" fill="#38bdf8"/>
+          <circle cx="30" cy="24" r="3.5" fill="#38bdf8"/>
+        </g>
+        <path id="guia-boca" d="M19 31c2.5 2 7.5 2 10 0" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </aside>
+
+  <footer class="mt-12 bg-carbon-950 py-8 text-xs text-slate-400 border-t border-slate-800/60">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6">
+      <p class="font-semibold text-slate-300">AEGIS Control • Proyecto Negocios Electrónicos y Desarrollo Web (FI UNAM)</p>
+      <p>Cumplimiento LFPDPPP (derechos ARCO) • LFPC • Pagos seguros PCI DSS</p>
+    </div>
+  </footer>
+
+  <script>
+    // =====================================================
+    // CONSTANTES, IMÁGENES OPTIMIZADAS Y UTILIDADES
+    // =====================================================
+    const IVA = 0.16;
+
+    // ---- FUENTE ÚNICA DE PRECIOS (MXN, antes de IVA). Catálogo y cotizador salen de aquí. ----
+    // Referencias del catálogo: PAQ-01 = 4 cámaras 1080p + DVR 4ch · PROD-02 = NVR 8ch + disco 1 TB · SERV-01 = 4 cámaras × instalación
+    const PRECIOS = {
+      camara: { '1080': 650, '2k': 850, '4k': 1300 },
+      grabador: { 4: 1250, 8: 1850, 16: 3400 },
+      grabadorPara(n) { return n <= 4 ? this.grabador[4] : n <= 8 ? this.grabador[8] : this.grabador[16]; },
+      instalacionPorCamara: 400,
+      factorPyME: 1.10,
+      hdd: 1100, ups: 1450, app: 400
+    };
+
+    // ---- DATOS DE CONTACTO: llénalos para activar los botones de WhatsApp y el bloque de contacto ----
+    // whatsapp: solo dígitos con lada de país, ej. '5215512345678'
+    const CONFIG = { whatsapp: '', telefono: '', email: '', cobertura: '', horario: '' };
+
+    // Imagen de respaldo si una foto falla al cargar
+    const IMG_FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400"><rect width="640" height="400" fill="#0f172a"/><g fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><rect x="240" y="150" width="130" height="80" rx="24"/><path d="M370 175l50-22v74l-50-22M305 230v40M270 270h70"/></g></svg>');
+    document.addEventListener('error', (e) => {
+      const t = e.target;
+      if (t && t.tagName === 'IMG' && !t.dataset.fb) { t.dataset.fb = '1'; t.src = IMG_FALLBACK; }
+    }, true);
+    const VISTAS = ['catalogo', 'comparador', 'cotizador', 'carrito', 'pedidos'];
+    const HORAS_MIN_CANCELACION = 24;
+
+    // Imágenes dimensionadas a w=640 y q=75 para decodificación ultrarrápida en GPU durante scroll
+    const IMAGENES_POR_ID = {
+      'PAQ-01': 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=640&q=75',
+      'PAQ-02': 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=640&q=75',
+      'PROD-01': 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=640&q=75',
+      'PROD-02': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=640&q=75',
+      'SERV-01': 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=640&q=75',
+      'SERV-02': 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?auto=format&fit=crop&w=640&q=75'
+    };
+
+    const CATALOGO_BASE = [
+      { id: 'PAQ-01', modelo: 'AEG-KIT4-1080', nombre: 'Kit Hogar Seguro (4 Cámaras 1080p)', categoria: 'paquete', tipo: 'producto', precio: 3850,
+        imagen: IMAGENES_POR_ID['PAQ-01'],
+        resolucion: 'Full HD 1080p (2 MP)', visionNocturna: 'Infrarroja Smart IR 30 m', proteccion: 'IP67 Polvo y Lluvia', almacenamiento: 'DVR 4 Canales (Hasta 4 TB)', idealPara: 'Casas habitación y departamentos',
+        incluye: ['4× Cámaras Bala Exterior IP67', '1× Grabador DVR 4 Canales H.265+', '4× Rollos de cable UTP 20 m', '1× Fuente de poder regulada'],
+        descripcion: 'Incluye 4 cámaras bala exterior IP67, DVR 4 canales, fuentes de poder y 80 m de cable UTP.' },
+      { id: 'PAQ-02', modelo: 'AEG-PRO8-2K', nombre: 'Paquete PyME Blindada (8 Cámaras 2K + Instalación)', categoria: 'paquete', tipo: 'ambos', precio: 11200,
+        imagen: IMAGENES_POR_ID['PAQ-02'],
+        resolucion: '2K QHD (4 MP) Gran Angular', visionNocturna: 'ColorVu Nocturna a Color 40 m', proteccion: 'IP67 + Carcasa Metálica Antivandálica IK10', almacenamiento: 'NVR 8 Canales + Disco 1 TB WD Purple', idealPara: 'Comercios, farmacias, restaurantes y oficinas',
+        incluye: ['8× Cámaras QHD Visión a Color', '1× NVR 8 Canales PoE', '1× Disco Duro 1 TB WD Purple 24/7', 'Instalación certificada bajo norma ISO + App Móvil'],
+        descripcion: '8 cámaras QHD con visión nocturna a color, NVR, disco duro 1 TB e instalación certificada norma ISO.' },
+      { id: 'PROD-01', modelo: 'AEG-DOMO-360', nombre: 'Cámara Domo IP WiFi 2K Audio Bidireccional', categoria: 'producto', tipo: 'producto', precio: 1250,
+        imagen: IMAGENES_POR_ID['PROD-01'],
+        resolucion: '2K QHD (2560 × 1440 px)', visionNocturna: 'Dual (IR + Luz Blanca 25 m)', proteccion: 'IP66 Interior / Exterior Techado', almacenamiento: 'MicroSD hasta 256 GB / Nube AEGIS', idealPara: 'Recepciones, cajas registradoras y accesos',
+        incluye: ['1× Cámara Domo Motorizada PTZ 360°', '1× Base de montaje a techo/pared', '1× Eliminador de corriente 12V', 'Manual de vinculación móvil'],
+        descripcion: 'Detección inteligente de movimiento, visión 360° motorizada y monitoreo directo en app móvil.' },
+      { id: 'PROD-02', modelo: 'AEG-NVR8-1TB', nombre: 'Grabador NVR 8 Canales + Disco Duro 1 TB WD Purple', categoria: 'producto', tipo: 'producto', precio: 2950,
+        imagen: IMAGENES_POR_ID['PROD-02'],
+        resolucion: 'Soporta cámaras hasta 4K (8 MP)', visionNocturna: 'Procesamiento IA de eventos nocturnos', proteccion: 'Chasis metálico disipador 1U', almacenamiento: '1 TB WD Purple incluido (Expandible a 10 TB)', idealPara: 'Centralizar y respaldar grabaciones 24/7',
+        incluye: ['1× Grabador NVR 8 Canales IP', '1× Disco Duro 1 TB instalado y formateado', '1× Cable de red Cat6 + Mouse USB', 'Fuente de alimentación 48V'],
+        descripcion: 'Almacenamiento continuo 24/7 con cifrado diseñado para videovigilancia de alto desempeño.' },
+      { id: 'SERV-01', modelo: 'SRV-ISO-04', nombre: 'Servicio de Instalación Profesional (1 a 4 Cámaras)', categoria: 'servicio', tipo: 'servicio', precio: 1600,
+        imagen: IMAGENES_POR_ID['SERV-01'],
+        resolucion: 'Calibración de ángulo sin puntos ciegos', visionNocturna: 'Ajuste anti-reflejo infrarrojo', proteccion: 'Tubería y canaleta sellada norma ISO', almacenamiento: 'Configuración de grabación por movimiento', idealPara: 'Clientes que ya cuentan con cámaras propias',
+        incluye: ['Tendido estético oculto hasta 20 m por cámara', 'Fijación en muro o losa con taquete expansivo', 'Configuración de App en hasta 4 celulares', 'Garantía escrita de instalación por 6 meses'],
+        descripcion: 'Montaje estético con canaleta/tubería bajo norma ISO, configuración móvil y capacitación.' },
+      { id: 'SERV-02', modelo: 'SRV-MNT-PRO', nombre: 'Mantenimiento Preventivo y Diagnóstico CCTV', categoria: 'servicio', tipo: 'servicio', precio: 850,
+        imagen: IMAGENES_POR_ID['SERV-02'],
+        resolucion: 'Limpieza ultrasónica de lentes y domos', visionNocturna: 'Prueba de matriz de LEDs IR', proteccion: 'Sellado hermético de cajas de registro', almacenamiento: 'Diagnóstico S.M.A.R.T. de disco duro', idealPara: 'Sistemas con más de 6 meses de uso continuo',
+        incluye: ['Limpieza física de hasta 8 cámaras y grabador', 'Reemplazo de conectores BNC/RJ45 sulfatados', 'Medición de amperaje de fuentes de poder', 'Reporte técnico firmado de operatividad'],
+        descripcion: 'Limpieza óptica, ajuste de conectores BNC/RJ45, revisión de voltajes y respaldo de grabaciones.' }
+    ];
+
+    const ICONOS = {
+      servicio: '<svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+      producto: '<svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>'
+    };
+
+    const ETIQUETAS_TIPO = { servicio: 'Servicio especializado', producto: 'Equipo físico', ambos: 'Kit + instalación ISO' };
+
+    const $ = (id) => document.getElementById(id);
+    const formatoMXN = (n) => '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const aFechaLocalISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const leerStorage = (clave) => { try { return JSON.parse(localStorage.getItem(clave) || '[]'); } catch (_) { return []; } };
+    const escribirStorage = (clave, valor) => { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (_) {} };
+    const totalesDe = (items) => {
+      const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const iva = subtotal * IVA;
+      return { subtotal, iva, total: subtotal + iva };
+    };
+
+    // =====================================================
+    // ESTADO (ViewModel)
+    // =====================================================
+    const state = {
+      catalogo: [...CATALOGO_BASE],
+      categoriaActual: 'todos',
+      carrito: leerStorage('cctv_carrito'),
+      pedidos: leerStorage('cctv_pedidos'),
+      citasOcupadas: ['2026-11-10_09:00', '2026-11-12_13:00'],
+      folioDevolucion: null,
+      pagando: false
+    };
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      pintarFiltros();
+      configurarFechasMinimas();
+      recalcularCotizador();
+      actualizarVistaCarrito();
+      renderPedidos();
+      iniciarEfecto3DCamara();
+      renderCatalogo();
+      await Promise.all([sincronizarConBackend(), sincronizarResenas()]);
+      renderCatalogo();
+    });
+
+    async function sincronizarConBackend() {
+      try {
+        const res = await fetch('/api/productos');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            state.catalogo = data.map((item) => ({
+              ...item,
+              imagen: item.imagen || IMAGENES_POR_ID[item.id] || IMAGENES_POR_ID['PAQ-01']
+            }));
+          }
+        }
+      } catch (_) {}
+    }
+
+    // =====================================================
+    // EFECTO 3D INTERACTIVO SIN LAYOUT THRASHING + PAUSA EN SCROLL
+    // =====================================================
+    function iniciarEfecto3DCamara() {
+      const hero = $('hero');
+      const rig = $('camera-3d-rig');
+      if (!hero || !rig || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
+      let rafId = null;
+      let heroVisible = true;
+
+      // Guardamos dimensiones en caché para no llamar getBoundingClientRect() en cada movimiento
+      let cachedWidth = window.innerWidth;
+      let cachedHeight = hero.offsetHeight || 680;
+      window.addEventListener('resize', () => {
+        cachedWidth = window.innerWidth;
+        cachedHeight = hero.offsetHeight || 680;
+      }, { passive: true });
+
+      // Pausa animaciones del Hero cuando sale de la vista al hacer scroll
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          heroVisible = entries[0].isIntersecting;
+          hero.classList.toggle('hero-paused', !heroVisible);
+          if (!heroVisible && rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+        }, { threshold: 0.05 });
+        observer.observe(hero);
+      }
+
+      function animarRig() {
+        if (!heroVisible) { rafId = null; return; }
+        currentX += (targetX - currentX) * 0.1;
+        currentY += (targetY - currentY) * 0.1;
+        rig.style.transform = `rotateY(${currentX.toFixed(2)}deg) rotateX(${currentY.toFixed(2)}deg)`;
+        if (Math.abs(targetX - currentX) > 0.04 || Math.abs(targetY - currentY) > 0.04) {
+          rafId = requestAnimationFrame(animarRig);
+        } else {
+          rafId = null;
+        }
+      }
+
+      hero.addEventListener('pointermove', (e) => {
+        if (!heroVisible) return;
+        const nx = e.clientX / cachedWidth - 0.5;
+        const ny = e.clientY / cachedHeight - 0.5;
+        targetX = nx * 12;
+        targetY = -ny * 10;
+        if (!rafId) rafId = requestAnimationFrame(animarRig);
+      }, { passive: true });
+
+      hero.addEventListener('pointerleave', () => {
+        targetX = 0;
+        targetY = 0;
+        if (heroVisible && !rafId) rafId = requestAnimationFrame(animarRig);
+      }, { passive: true });
+    }
+
+    // =====================================================
+    // NAVEGACIÓN Y FEEDBACK FLUIDO
+    // =====================================================
+    function cambiarVista(vista) {
+      VISTAS.forEach((v) => {
+        $(`vista-${v}`).classList.toggle('hidden', v !== vista);
+        $(`tab-${v}`).setAttribute('aria-selected', String(v === vista));
+      });
+      $('hero').classList.toggle('hidden', vista !== 'catalogo');
+      if (vista === 'carrito') actualizarVistaCarrito();
+      if (vista === 'pedidos') renderPedidos();
+      moverIndicador(vista);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    function irAlCatalogo(e) {
+      if (e) e.preventDefault();
+      cambiarVista('catalogo');
+    }
+
+    function verCatalogo() {
+      $('contenido').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    let vistaActual = 'catalogo';
+
+    function moverIndicador(vista = vistaActual) {
+      vistaActual = vista;
+      const tab = $(`tab-${vista}`);
+      const indicador = $('tab-indicador');
+      if (!tab || !indicador) return;
+      indicador.style.transform = `translateX(${tab.offsetLeft}px) scaleX(${tab.offsetWidth})`;
+    }
+
+    function actualizarRelleno(input) {
+      const pct = ((input.value - input.min) / (input.max - input.min)) * 100;
+      input.style.setProperty('--p', `${pct}%`);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      moverIndicador();
+      requestAnimationFrame(() => { $('tab-indicador').dataset.ready = 'true'; });
+      if (document.fonts) document.fonts.ready.then(() => moverIndicador());
+      window.addEventListener('resize', () => moverIndicador(), { passive: true });
+
+      const encabezado = $('encabezado');
+      let bordeVisible = false;
+      window.addEventListener('scroll', () => {
+        const visible = window.scrollY > 8;
+        if (visible === bordeVisible) return;
+        bordeVisible = visible;
+        encabezado.dataset.scrolled = String(visible);
+      }, { passive: true });
+    });
+
+    let toastTimer;
+    function mostrarToast(mensaje) {
+      const toast = $('toast');
+      toast.textContent = mensaje;
+      toast.dataset.visible = 'true';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.dataset.visible = 'false'; }, 3200);
+    }
+
+    // =====================================================
+    // 1. CATÁLOGO CON IMÁGENES DE CÁMARAS (SIN BLUR COSTOSO EN CHIPS)
+    // =====================================================
+    const CLASE_FILTRO_ACTIVO = 'bg-slate-900 text-white shadow-sm';
+    const CLASE_FILTRO_INACTIVO = 'bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-slate-900';
+
+    function pintarFiltros() {
+      document.querySelectorAll('.filtro-btn').forEach((btn) => {
+        const activo = btn.dataset.cat === state.categoriaActual;
+        btn.className = `filtro-btn ${activo ? CLASE_FILTRO_ACTIVO : CLASE_FILTRO_INACTIVO}`;
+        btn.setAttribute('aria-pressed', String(activo));
+      });
+    }
+
+    function filtrarCategoria(cat) {
+      state.categoriaActual = cat;
+      pintarFiltros();
+      renderCatalogo();
+    }
+
+    function renderCatalogo() {
+      const q = $('input-busqueda').value.toLowerCase().trim();
+      const filtrados = state.catalogo.filter((item) => {
+        const coincideCat = state.categoriaActual === 'todos' || item.categoria === state.categoriaActual;
+        const coincideTexto = item.nombre.toLowerCase().includes(q) || item.descripcion.toLowerCase().includes(q);
+        return coincideCat && coincideTexto;
+      });
+
+      if (state.orden === 'calificacion') filtrados.sort((a, b) => puntajeBayes(b.id) - puntajeBayes(a.id));
+      else if (state.orden === 'precio-asc') filtrados.sort((a, b) => a.precio - b.precio);
+      else if (state.orden === 'precio-desc') filtrados.sort((a, b) => b.precio - a.precio);
+
+      if (filtrados.length === 0) {
+        $('grid-catalogo').innerHTML = `<p class="col-span-full py-16 text-center text-sm text-slate-400">No encontramos resultados. Prueba con otro término o categoría.</p>`;
+        return;
+      }
+
+      $('grid-catalogo').innerHTML = filtrados.map((item, idx) => {
+        const esServicio = item.tipo === 'servicio';
+        const badge = esServicio ? 'bg-slate-900/95 text-white' : 'bg-blue-600 text-white';
+        const icono = esServicio ? ICONOS.servicio : ICONOS.producto;
+        const id = escapeHtml(item.id);
+        const modelo = escapeHtml(item.modelo || item.id);
+        const imgUrl = escapeHtml(item.imagen || IMAGENES_POR_ID[item.id] || IMAGENES_POR_ID['PAQ-01']);
+
+        return `
+        <article style="--i:${idx}" class="card-stagger product-card group card flex flex-col justify-between overflow-hidden">
+          <div>
+            <div onclick="abrirDetalleProducto('${id}')" class="relative aspect-[16/10] w-full cursor-pointer overflow-hidden bg-slate-900">
+              <img src="${imgUrl}" alt="${escapeHtml(item.nombre)}" loading="lazy" decoding="async"
+                class="h-full w-full object-cover object-center transition-transform duration-500 ease-spring group-hover:scale-105" />
+              <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent"></div>
+              <span class="chip ${badge} absolute left-4 top-4 shadow-sm">${icono}${ETIQUETAS_TIPO[item.tipo] || 'Producto'}</span>
+              <span class="absolute bottom-3 right-3 rounded-lg bg-slate-950/80 px-2.5 py-1 font-mono text-[10px] font-semibold text-cyan-300">Modelo: ${modelo}</span>
+            </div>
+
+            <div class="p-6 pb-2">
+              <button type="button" onclick="abrirDetalleProducto('${id}')" class="text-left">
+                <h3 class="text-lg font-extrabold leading-snug tracking-tight text-slate-900 transition-colors duration-200 group-hover:text-blue-600">${escapeHtml(item.nombre)}</h3>
+              </button>
+              <p class="mt-2 text-sm leading-relaxed text-slate-500">${escapeHtml(item.descripcion)}</p>
+              ${resumenCalificacion(item.id)}
+              <div class="mt-3 flex items-center gap-3 text-xs font-semibold text-blue-600">
+                <button type="button" onclick="abrirDetalleProducto('${id}')" class="hover:underline">Ver especificaciones →</button>
+                <span class="text-slate-300">•</span>
+                <button type="button" onclick="enviarAComparador('${id}')" class="text-slate-500 hover:text-slate-900">Comparar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mx-6 mb-6 mt-4 flex items-end justify-between border-t border-slate-100 pt-4">
+            <div>
+              <span class="block text-[10px] font-bold uppercase tracking-widest text-slate-400">Antes de IVA</span>
+              ${bloquePrecio(item)}
+            </div>
+            <button onclick="agregarAlCarrito('${id}')" data-testid="add-item-${id}" class="btn btn-dark">Agregar</button>
+          </div>
+        </article>`;
+      }).join('');
+    }
+
+    // =====================================================
+    // 2. COTIZADOR
+    // =====================================================
+    function calcularCotizacion() {
+      const numCamaras = parseInt($('cot-camaras').value, 10);
+      const resolucion = $('cot-resolucion').value;
+      const incluyeInstalacion = $('cot-cableado').value === 'instalacion';
+      const inmueble = document.querySelector('input[name="inmueble"]:checked').value;
+      const factor = inmueble === 'PyME' ? PRECIOS.factorPyME : 1;
+
+      const subtotalEquipo = numCamaras * PRECIOS.camara[resolucion] + PRECIOS.grabadorPara(numCamaras);
+      const subtotalInstalacion = incluyeInstalacion ? Math.round(numCamaras * PRECIOS.instalacionPorCamara * factor) : 0;
+      const subtotalAccesorios = ($('acc-hdd').checked ? PRECIOS.hdd : 0) + ($('acc-ups').checked ? PRECIOS.ups : 0) + ($('acc-app').checked ? PRECIOS.app : 0);
+
+      const subtotal = subtotalEquipo + subtotalInstalacion + subtotalAccesorios;
+      const iva = subtotal * IVA;
+      return {
+        numCamaras, inmueble, resolucion, incluyeInstalacion,
+        subtotalEquipo, subtotalInstalacion, subtotalAccesorios, subtotal, iva, total: subtotal + iva
+      };
+    }
+
+    function recalcularCotizador() {
+      const c = calcularCotizacion();
+      $('lbl-num-camaras').textContent = c.numCamaras;
+      actualizarRelleno($('cot-camaras'));
+      $('res-equipo').textContent = formatoMXN(c.subtotalEquipo);
+      $('res-instalacion').textContent = formatoMXN(c.subtotalInstalacion);
+      $('res-accesorios').textContent = formatoMXN(c.subtotalAccesorios);
+      $('res-subtotal').textContent = formatoMXN(c.subtotal);
+      $('res-iva').textContent = formatoMXN(c.iva);
+      $('res-total').textContent = `${formatoMXN(c.total)} MXN`;
+      return c;
+    }
+
+    function agregarCotizacionAlCarrito() {
+      const c = recalcularCotizador();
+      state.carrito.push({
+        id: 'COT-' + Date.now().toString().slice(-6),
+        nombre: `Cotización CCTV ${c.inmueble} (${c.numCamaras} cámaras ${c.incluyeInstalacion ? '+ instalación ISO' : 'solo equipo'})`,
+        tipo: c.incluyeInstalacion ? 'ambos' : 'producto',
+        precio: c.subtotal,
+        cantidad: 1
+      });
+      guardarCarrito();
+      mostrarToast('Cotización personalizada añadida al carrito');
+      cambiarVista('carrito');
+    }
+
+    // =====================================================
+    // 3. CARRITO Y LOGÍSTICA DUAL
+    // =====================================================
+    function agregarAlCarrito(idProducto) {
+      const prod = state.catalogo.find((p) => p.id === idProducto);
+      if (!prod) return;
+      const existente = state.carrito.find((i) => i.id === idProducto);
+      if (existente) existente.cantidad += 1;
+      else state.carrito.push({ id: prod.id, nombre: prod.nombre, tipo: prod.tipo, precio: prod.precio, cantidad: 1 });
+      guardarCarrito();
+      mostrarToast(`"${prod.nombre}" agregado al carrito`);
+    }
+
+    function cambiarCantidad(id, delta) {
+      const item = state.carrito.find((i) => i.id === id);
+      if (!item) return;
+      item.cantidad += delta;
+      if (item.cantidad <= 0) state.carrito = state.carrito.filter((i) => i.id !== id);
+      guardarCarrito();
+      actualizarVistaCarrito();
+    }
+
+    let totalItemsPrevio = null;
+    function guardarCarrito() {
+      escribirStorage('cctv_carrito', state.carrito);
+      const totalItems = state.carrito.reduce((acc, i) => acc + i.cantidad, 0);
+      const badge = $('badge-carrito');
+      badge.textContent = totalItems;
+      if (totalItemsPrevio !== null && totalItems !== totalItemsPrevio) {
+        badge.classList.remove('badge-bump');
+        void badge.offsetWidth;
+        badge.classList.add('badge-bump');
+      }
+      totalItemsPrevio = totalItems;
+    }
+
+    function configurarFechasMinimas() {
+      const entrega = new Date();
+      entrega.setDate(entrega.getDate() + 3);
+      $('fecha-entrega-sistema').textContent = entrega.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const manana = new Date();
+      manana.setDate(manana.getDate() + 1);
+      const iso = aFechaLocalISO(manana);
+      const input = $('input-fecha-instalacion');
+      input.min = iso;
+      input.value = iso;
+    }
+
+    function validarDisponibilidadHorario() {
+      const fecha = $('input-fecha-instalacion').value;
+      const select = $('input-hora-instalacion');
+      const msg = $('msg-disponibilidad');
+      if (!fecha) { msg.textContent = ''; return; }
+
+      let primeraLibre = null;
+      Array.from(select.options).forEach((opt) => {
+        const ocupado = state.citasOcupadas.includes(`${fecha}_${opt.value}`);
+        opt.disabled = ocupado;
+        opt.textContent = ocupado ? `${opt.dataset.label} — Ocupado` : opt.dataset.label;
+        if (!ocupado && !primeraLibre) primeraLibre = opt;
+      });
+
+      if (select.selectedOptions[0]?.disabled) select.value = primeraLibre ? primeraLibre.value : '';
+
+      msg.className = `text-xs font-medium ${primeraLibre ? 'text-blue-700' : 'text-red-600'}`;
+      msg.textContent = primeraLibre
+        ? `Horarios verificados sin traslapes para el ${fecha}.`
+        : 'Sin disponibilidad ese día. Elige otra fecha.';
+    }
+
+    function actualizarVistaCarrito() {
+      guardarCarrito();
+      renderAddons();
+      const contenedor = $('lista-carrito');
+      const requiereServicio = state.carrito.some((i) => i.tipo === 'servicio' || i.tipo === 'ambos');
+      const incluyeProducto = state.carrito.some((i) => i.tipo === 'producto' || i.tipo === 'ambos');
+
+      $('bloque-entrega-producto').classList.toggle('hidden', !incluyeProducto && state.carrito.length > 0);
+      $('bloque-agenda-servicio').classList.toggle('hidden', !requiereServicio);
+
+      if (state.carrito.length === 0) {
+        contenedor.innerHTML = `
+          <div class="py-10 text-center">
+            <p class="text-sm text-slate-400">Tu carrito está vacío.</p>
+            <button onclick="cambiarVista('catalogo')" class="btn btn-ghost mt-4">Explorar catálogo</button>
+          </div>`;
+        $('chk-subtotal').textContent = '$0.00';
+        $('chk-iva').textContent = '$0.00';
+        $('chk-total').textContent = '$0.00 MXN';
+        return;
+      }
+
+      contenedor.innerHTML = state.carrito.map((item) => {
+        const id = escapeHtml(item.id);
+        return `
+        <div class="flex items-center justify-between gap-4 border-b border-slate-100 py-4 last:border-0">
+          <div class="min-w-0">
+            <h4 class="text-sm font-semibold text-slate-900">${escapeHtml(item.nombre)}</h4>
+            <span class="tnum text-xs text-slate-400">${formatoMXN(item.precio)} c/u antes de IVA</span>
+          </div>
+          <div class="flex shrink-0 items-center gap-1 rounded-full bg-slate-100 p-1">
+            <button onclick="cambiarCantidad('${id}', -1)" aria-label="Quitar una unidad" class="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-transform hover:bg-white active:scale-90">−</button>
+            <span class="tnum w-6 text-center text-sm font-bold">${item.cantidad}</span>
+            <button onclick="cambiarCantidad('${id}', 1)" aria-label="Agregar una unidad" class="flex h-7 w-7 items-center justify-center rounded-full text-slate-600 transition-transform hover:bg-white active:scale-90">+</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      const { subtotal, iva, total } = totalesDe(state.carrito);
+      $('chk-subtotal').textContent = formatoMXN(subtotal);
+      $('chk-iva').textContent = formatoMXN(iva);
+      $('chk-total').textContent = `${formatoMXN(total)} MXN`;
+      validarDisponibilidadHorario();
+    }
+
+    function toggleCamposTarjeta() {
+      $('campos-tarjeta').classList.toggle('hidden', $('chk-metodo').value !== 'Tarjeta');
+    }
+
+    // =====================================================
+    // 4. CHECKOUT (idempotente) Y POSVENTA
+    // =====================================================
+    function validarTarjeta() {
+      if ($('chk-metodo').value !== 'Tarjeta') return true;
+      const num = $('chk-num-tarjeta').value.replace(/\s/g, '');
+      const cvv = $('chk-cvv').value;
+      return /^\d{13,16}$/.test(num) && /^\d{3,4}$/.test(cvv);
+    }
+
+    function setPagando(activo) {
+      state.pagando = activo;
+      const btn = $('btn-pagar');
+      btn.disabled = activo;
+      $('btn-pagar-label').textContent = activo ? 'Procesando…' : 'Confirmar y pagar';
+      btn.querySelector('.spinner')?.remove();
+      if (activo) btn.insertAdjacentHTML('afterbegin', '<span class="spinner" aria-hidden="true"></span>');
+    }
+
+    async function procesarPago(e) {
+      e.preventDefault();
+      if (state.pagando) return;
+
+      if (state.carrito.length === 0) { mostrarToast('Agrega al menos un producto o servicio antes de pagar.'); return; }
+      if (!$('form-checkout').reportValidity()) return;
+      if (!validarTarjeta()) { mostrarToast('Revisa el número de tarjeta y el CVV.'); return; }
+
+      const requiereServicio = state.carrito.some((i) => i.tipo === 'servicio' || i.tipo === 'ambos');
+      const fechaInstalacion = $('input-fecha-instalacion').value;
+      const horaInstalacion = $('input-hora-instalacion').value;
+      if (requiereServicio && (!fechaInstalacion || !horaInstalacion)) { mostrarToast('Selecciona fecha y horario disponibles para tu instalación.'); return; }
+
+      const { subtotal, iva, total } = totalesDe(state.carrito);
+      const pedido = {
+        folio: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+        cliente: $('chk-nombre').value.trim(),
+        email: $('chk-email').value.trim(),
+        direccion: $('chk-direccion').value.trim(),
+        metodoPago: $('chk-metodo').value,
+        items: [...state.carrito],
+        subtotal, iva, total,
+        fechaEntregaSistema: $('fecha-entrega-sistema').textContent,
+        citaInstalacion: requiereServicio ? `${fechaInstalacion}T${horaInstalacion}:00` : null,
+        estatus: 'Confirmado y pagado',
+        creadoEn: new Date().toISOString()
+      };
+
+      setPagando(true);
+      try {
+        await fetch('/api/pedidos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pedido.folio },
+          body: JSON.stringify(pedido)
+        });
+      } catch (_) {}
+
+      if (requiereServicio) state.citasOcupadas.push(`${fechaInstalacion}_${horaInstalacion}`);
+      state.pedidos.unshift(pedido);
+      escribirStorage('cctv_pedidos', state.pedidos);
+      state.carrito = [];
+      guardarCarrito();
+      $('form-checkout').reset();
+      configurarFechasMinimas();
+      toggleCamposTarjeta();
+      setPagando(false);
+
+      mostrarToast(`Pago exitoso. Folio: ${pedido.folio}`);
+      cambiarVista('pedidos');
+    }
+
+    function cancelarPedido(folio) {
+      const pedido = state.pedidos.find((p) => p.folio === folio);
+      if (!pedido) return;
+
+      if (pedido.citaInstalacion) {
+        const horasRestantes = (new Date(pedido.citaInstalacion) - new Date()) / 36e5;
+        if (horasRestantes < HORAS_MIN_CANCELACION) {
+          mostrarToast('No se permite cancelar citas con menos de 24 horas de anticipación.');
+          return;
+        }
+        state.citasOcupadas = state.citasOcupadas.filter((c) => c !== pedido.citaInstalacion.slice(0, 16).replace('T', '_'));
+      }
+
+      pedido.estatus = 'Cancelado por el cliente (reembolso en proceso)';
+      escribirStorage('cctv_pedidos', state.pedidos);
+      renderPedidos();
+      mostrarToast(`Pedido ${folio} cancelado correctamente.`);
+    }
+
+    function solicitarDevolucion(folio) {
+      state.folioDevolucion = folio;
+      $('dlg-motivo').value = '';
+      $('dlg-devolucion').showModal();
+      $('dlg-motivo').focus();
+    }
+
+    function confirmarDevolucion(e) {
+      e.preventDefault();
+      const pedido = state.pedidos.find((p) => p.folio === state.folioDevolucion);
+      const motivo = $('dlg-motivo').value.trim();
+      if (!pedido || !motivo) return;
+      pedido.estatus = `Devolución solicitada: "${motivo}"`;
+      escribirStorage('cctv_pedidos', state.pedidos);
+      $('dlg-devolucion').close();
+      renderPedidos();
+      mostrarToast(`Solicitud de devolución registrada para ${pedido.folio}.`);
+    }
+
+    function renderPedidos() {
+      const cont = $('lista-pedidos');
+      if (state.pedidos.length === 0) {
+        cont.innerHTML = `<div class="card p-10 text-center text-sm text-slate-400">Aún no tienes pedidos registrados.</div>`;
+        return;
+      }
+
+      cont.innerHTML = state.pedidos.map((p) => {
+        const folio = escapeHtml(p.folio);
+        const cerrado = p.estatus.startsWith('Cancelado') || p.estatus.startsWith('Devolución');
+        const chipEstatus = cerrado ? 'bg-slate-100 text-slate-700' : 'bg-blue-50 text-blue-700';
+        return `
+        <article class="card space-y-4 p-6">
+          <div class="flex flex-col justify-between gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+            <div class="flex items-center gap-3">
+              <span class="chip bg-slate-900 text-white">${folio}</span>
+              <span class="text-sm font-bold text-slate-900">${escapeHtml(p.cliente)}</span>
+            </div>
+            <span class="chip ${chipEstatus} normal-case tracking-normal">${escapeHtml(p.estatus)}</span>
+          </div>
+
+          <div class="space-y-1.5 text-sm text-slate-600">
+            <p><span class="font-semibold text-slate-900">Artículos:</span> ${p.items.map((i) => `${i.cantidad}× ${escapeHtml(i.nombre)}`).join(', ')}</p>
+            <p><span class="font-semibold text-slate-900">Total pagado (${escapeHtml(p.metodoPago)}):</span> <span class="tnum">${formatoMXN(p.total)}</span></p>
+            <p><span class="font-semibold text-slate-900">Entrega de equipos:</span> ${escapeHtml(p.fechaEntregaSistema)}</p>
+            ${p.citaInstalacion ? `<p><span class="font-semibold text-slate-900">Cita de instalación:</span> ${escapeHtml(p.citaInstalacion.replace('T', ' a las '))} hrs</p>` : ''}
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            ${cerrado 
+              ? `<button disabled class="btn btn-danger opacity-50 cursor-not-allowed">Cancelar pedido / cita (≥ 24 hrs)</button>
+                 <button disabled class="btn btn-ghost opacity-50 cursor-not-allowed">Solicitar devolución (garantía 6 meses)</button>`
+              : `<button onclick="cancelarPedido('${folio}')" data-testid="cancel-btn-${folio}" class="btn btn-danger">Cancelar pedido / cita (≥ 24 hrs)</button>
+                 <button onclick="solicitarDevolucion('${folio}')" data-testid="return-btn-${folio}" class="btn btn-ghost">Solicitar devolución (garantía 6 meses)</button>`
+            }
+          </div>
+        </article>`;
+      }).join('');
+    }
+    
+    // =====================================================
+    // 5. DETALLES DE PRODUCTO, COMPARADOR APPLE, TEMA Y GUÍA AEGIS BOT
+    // =====================================================
+    state.modelosComparados = ['PAQ-01', 'PAQ-02', 'PROD-01'];
+
+    function enriquecerItem(item) {
+      const base = CATALOGO_BASE.find((b) => b.id === item.id) || CATALOGO_BASE[0];
+      return { ...base, ...item };
+    }
+
+    function abrirDetalleProducto(id) {
+      const raw = state.catalogo.find((p) => p.id === id);
+      if (!raw) return;
+      const item = enriquecerItem(raw);
+      const idEsc = escapeHtml(item.id);
+
+      $('contenido-detalle').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-12">
+          <div class="relative bg-slate-950 md:col-span-5">
+            <img src="${escapeHtml(item.imagen)}" alt="${escapeHtml(item.nombre)}" class="h-full w-full object-cover object-center min-h-[16rem]" />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent"></div>
+            <div class="absolute bottom-4 left-4 right-4 text-white">
+              <span class="rounded-md bg-blue-600 px-2 py-0.5 font-mono text-[11px] font-bold">${escapeHtml(item.modelo)}</span>
+              <p class="mt-2 text-xs text-slate-300">Ideal para: <strong class="text-white">${escapeHtml(item.idealPara)}</strong></p>
+            </div>
+          </div>
+
+          <div class="p-6 sm:p-8 md:col-span-7 space-y-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-widest text-blue-600">${ETIQUETAS_TIPO[item.tipo] || 'Equipo AEGIS'}</span>
+                <h3 id="det-nombre" class="mt-1 text-xl font-extrabold tracking-tight text-slate-900">${escapeHtml(item.nombre)}</h3>
+              </div>
+              <button type="button" onclick="$('dlg-detalle').close()" class="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Cerrar">✕</button>
+            </div>
+
+            <p class="text-sm leading-relaxed text-slate-500">${escapeHtml(item.descripcion)}</p>
+
+            <!-- Tabla de especificaciones técnicas -->
+            <dl class="grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 text-xs">
+              <div><dt class="text-slate-400 font-semibold">Resolución / Óptica</dt><dd class="mt-0.5 font-bold text-slate-900">${escapeHtml(item.resolucion)}</dd></div>
+              <div><dt class="text-slate-400 font-semibold">Visión Nocturna</dt><dd class="mt-0.5 font-bold text-slate-900">${escapeHtml(item.visionNocturna)}</dd></div>
+              <div><dt class="text-slate-400 font-semibold">Grado de Blindaje</dt><dd class="mt-0.5 font-bold text-slate-900">${escapeHtml(item.proteccion)}</dd></div>
+              <div><dt class="text-slate-400 font-semibold">Almacenamiento</dt><dd class="mt-0.5 font-bold text-slate-900">${escapeHtml(item.almacenamiento)}</dd></div>
+            </dl>
+
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">¿Qué incluye este paquete?</h4>
+              <ul class="space-y-1.5 text-xs text-slate-600">
+                ${(item.incluye || []).map((inc) => `<li class="flex items-center gap-2"><span class="text-blue-600 font-bold">✓</span> ${escapeHtml(inc)}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4">
+              <div>
+                <span class="block text-[10px] font-bold uppercase tracking-widest text-slate-400">Precio antes de IVA</span>
+                ${bloquePrecio(item, 'text-2xl')}
+              </div>
+              <div class="flex gap-2">
+                ${CONFIG.whatsapp ? `<button type="button" onclick="preguntarProductoWhatsApp('${idEsc}')" class="btn btn-ghost">WhatsApp</button>` : ''}
+                <button type="button" onclick="$('dlg-detalle').close(); enviarAComparador('${idEsc}')" class="btn btn-ghost">Comparar</button>
+                <button type="button" onclick="agregarAlCarrito('${idEsc}'); $('dlg-detalle').close()" class="btn btn-blue">Agregar al carrito</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const secRes = document.createElement('div');
+      secRes.id = 'det-resenas';
+      secRes.className = 'border-t border-slate-100 p-6 sm:p-8';
+      $('contenido-detalle').appendChild(secRes);
+      renderResenas(item.id);
+      $('dlg-detalle').showModal();
+    }
+
+    function enviarAComparador(id) {
+      const prod = state.catalogo.find((p) => p.id === id);
+      if (state.presupuestoMax && prod && prod.precio > state.presupuestoMax) limpiarPresupuesto(false);
+      if (!state.modelosComparados.includes(id)) {
+        state.modelosComparados[0] = id;
+      }
+      cambiarVista('comparador');
+    }
+
+    function cambiarModeloComparador(colIdx, nuevoId) {
+      state.modelosComparados[colIdx] = nuevoId;
+      renderComparador();
+    }
+
+    state.idRecomendado = null;
+
+
+const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
+    const BTN_PRESUP_ON = ['bg-blue-600', 'text-white'];
+    const BTN_PRESUP_OFF = ['bg-slate-100', 'text-slate-700', 'hover:bg-blue-50', 'hover:text-blue-700'];
+    state.presupuestoMax = null;
+
+    function marcarBotonPresupuesto() {
+      document.querySelectorAll('[data-presupuesto]').forEach((b) => {
+        const activo = Number(b.dataset.presupuesto) === state.presupuestoMax;
+        b.setAttribute('aria-pressed', String(activo));
+        BTN_PRESUP_ON.forEach((c) => b.classList.toggle(c, activo));
+        BTN_PRESUP_OFF.forEach((c) => b.classList.toggle(c, !activo));
+      });
+      $('btn-sin-limite')?.classList.toggle('hidden', !state.presupuestoMax);
+    }
+
+    function limpiarPresupuesto(render = true) {
+      state.presupuestoMax = null;
+      state.idRecomendado = null;
+      state.modelosComparados = [...MODELOS_POR_DEFECTO];
+      $('banner-recomendacion')?.classList.add('hidden');
+      marcarBotonPresupuesto();
+      if (render) renderComparador();
+    }
+
+    function recomendarPorPresupuesto(maxPrecio) {
+      // Solo entran al comparador (columnas y selectores) los productos dentro del tope
+      const pool = state.catalogo.filter((p) => p.precio <= maxPrecio);
+      if (!pool.length) { mostrarToast(`No hay productos por debajo de ${formatoMXN(maxPrecio)}.`); return; }
+
+      state.presupuestoMax = maxPrecio;
+      const equipos = pool.filter((p) => p.tipo !== 'servicio').sort((a, b) => b.precio - a.precio);
+      const servicios = pool.filter((p) => p.tipo === 'servicio').sort((a, b) => b.precio - a.precio);
+      const orden = [...equipos, ...servicios];
+
+      const mejor = enriquecerItem(orden[0]);
+      state.idRecomendado = equipos.length ? mejor.id : null;
+      state.modelosComparados = orden.slice(0, 3).map((p) => p.id);
+      marcarBotonPresupuesto();
+
+      const n = pool.length;
+      const banner = $('banner-recomendacion');
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.innerHTML = `
+          <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <p><strong class="text-blue-600">🤖 Veredicto de Aegis Bot:</strong> Para un tope de <strong>${formatoMXN(maxPrecio)}</strong> (antes de IVA), tu mejor inversión es <strong>${escapeHtml(mejor.nombre)}</strong> (${escapeHtml(mejor.modelo)})${mejor.resolucion ? ` porque ofrece <em>${escapeHtml(mejor.resolucion)}</em>` : ''}${mejor.idealPara ? ` y es ideal para <em>${escapeHtml(mejor.idealPara)}</em>` : ''}. Solo se muestran las <strong>${n}</strong> ${n === 1 ? 'opción' : 'opciones'} dentro de tu presupuesto.</p>
+            <button type="button" onclick="agregarAlCarrito('${escapeHtml(mejor.id)}')" class="btn btn-blue shrink-0 py-2 text-xs">Agregar recomendado</button>
+          </div>`;
+      }
+
+      if ($('texto-guia')) {
+        $('texto-guia').textContent = `Con tope de ${formatoMXN(maxPrecio)} hay ${n} ${n === 1 ? 'opción' : 'opciones'}. Te recomiendo "${mejor.nombre}" (${formatoMXN(mejor.precio)} + IVA).`;
+      }
+
+      renderComparador();
+    }
+
+    // ===== Comparador visual: datos estructurados por modelo =====
+    const ICONO_CAM = '<svg viewBox="0 0 24 24" class="h-6 w-6" aria-hidden="true"><rect x="2" y="6" width="14" height="9" rx="3" fill="currentColor"/><path d="M16 9l6-2.5v8L16 12z" fill="currentColor"/><path d="M8 15v4M5 19h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const ICONO_OK = '<svg viewBox="0 0 20 20" class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Incluido"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
+    const GUION = '<span class="text-2xl font-light leading-none text-slate-400" aria-label="No incluido">—</span>';
+
+    const GLIFOS = {
+      kit: '<rect x="6" y="12" width="30" height="13" rx="5"/><circle cx="14" cy="18.5" r="3.5"/><path d="M36 16h6v5h-6M21 25v4M14 29h14"/><rect x="26" y="40" width="32" height="12" rx="3"/><circle cx="52" cy="46" r="1.6"/><path d="M32 46h10"/>',
+      domo: '<path d="M12 40a20 20 0 0140 0z"/><circle cx="32" cy="32" r="5.5"/><path d="M8 40h48M32 40v10M23 50h18"/>',
+      nvr: '<rect x="6" y="22" width="52" height="20" rx="4"/><circle cx="47" cy="32" r="2.2"/><path d="M14 32h18M14 42v5M50 42v5"/>',
+      servicio: '<path d="M42 12a11 11 0 00-10 15L12 47a4.5 4.5 0 006.5 6.5L38.500 33.500A11 11 0 0052 22l-7.500 7.500-6-1.500-1.500-6z"/>'
+    };
+    const glifo = (k) => GLIFOS[k]
+      ? `<svg viewBox="0 0 64 64" class="h-16 w-16 text-slate-900" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLIFOS[k]}</svg>`
+      : GUION;
+
+    const SPECS = {
+      'PAQ-01': { glifo: 'kit', camaras: 4, mp: 2, mpTxt: '2 MP', noche: 30, color: false, ip: 'IP67', ik: null, cap: 4, capTxt: '4 TB', audio: false, ptz: false, wifi: false, app: false, instalacion: false },
+      'PAQ-02': { glifo: 'kit', camaras: 8, mp: 4, mpTxt: '4 MP', noche: 40, color: true, ip: 'IP67', ik: 10, cap: 1, capTxt: '1 TB', audio: false, ptz: false, wifi: false, app: true, instalacion: true },
+      'PROD-01': { glifo: 'domo', camaras: 1, mp: 4, mpTxt: '2K · 4 MP', noche: 25, color: true, ip: 'IP66', ik: null, cap: 0.256, capTxt: '256 GB', audio: true, ptz: true, wifi: true, app: true, instalacion: false },
+      'PROD-02': { glifo: 'nvr', camaras: null, mp: 8, mpTxt: 'Hasta 8 MP', noche: null, color: false, ip: null, ik: null, cap: 10, capTxt: 'Hasta 10 TB', audio: false, ptz: false, wifi: false, app: false, instalacion: false },
+      'SERV-01': { glifo: 'servicio', camaras: null, mp: null, noche: null, ip: null, ik: null, cap: null, instalacion: true },
+      'SERV-02': { glifo: 'servicio', camaras: null, mp: null, noche: null, ip: null, ik: null, cap: null }
+    };
+
+    const pctBarra = (v, max) => Math.max(4, Math.min(100, (v / max) * 100));
+    const celdaBarra = (valor, max, etiqueta, sub) => `
+      <div class="mx-auto w-full max-w-[12rem]">
+        <p class="tnum text-2xl font-black tracking-tight text-slate-900">${escapeHtml(etiqueta)}</p>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+          <div class="cmp-bar h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400" style="width:${pctBarra(valor, max).toFixed(1)}%"></div>
+        </div>
+        ${sub ? `<p class="mt-2 text-[11px] leading-snug text-slate-500">${escapeHtml(sub)}</p>` : ''}
+      </div>`;
+    const celdaTexto = (t) => t ? `<p class="text-xs font-semibold leading-snug text-slate-900">${escapeHtml(t)}</p>` : GUION;
+    const filaCheck = (titulo, campo) => ({ titulo, compacto: true, sig: (i, s) => !!s[campo], celda: (i, s) => s[campo] ? ICONO_OK : GUION });
+
+    const FILAS = [
+      { seccion: 'Vista general' },
+      { titulo: 'Tipo de equipo', sig: (i, s) => s.glifo || '',
+        celda: (i, s) => `${glifo(s.glifo)}<p class="mt-3 text-xs font-bold text-slate-900">${escapeHtml(ETIQUETAS_TIPO[i.tipo] || 'Equipo AEGIS')}</p>` },
+      { titulo: 'Cámaras incluidas', sig: (i, s) => s.camaras,
+        celda: (i, s) => s.camaras
+          ? `<div class="flex max-w-[11rem] flex-wrap justify-center gap-1 text-blue-600">${ICONO_CAM.repeat(Math.min(s.camaras, 8))}</div><p class="mt-2 text-sm font-bold text-slate-900">${s.camaras} ${s.camaras === 1 ? 'cámara' : 'cámaras'}</p>`
+          : GUION },
+
+      { titulo: 'Calificación de clientes', sig: (i) => { const r = resumenResenas(i.id); return r.n ? r.prom.toFixed(1) : '—'; }, celda: (i) => celdaCalificacion(i.id) },
+
+      { seccion: 'Imagen' },
+      { titulo: 'Resolución máxima', sig: (i, s) => s.mp,
+        celda: (i, s) => s.mp ? celdaBarra(s.mp, 8, s.mpTxt || `${s.mp} MP`, i.resolucion) : GUION },
+      { titulo: 'Visión nocturna', sig: (i, s) => `${s.noche}|${s.color}`,
+        celda: (i, s) => s.noche ? celdaBarra(s.noche, 40, `${s.noche} m`, s.color ? 'Imagen a color de noche' : 'Infrarroja (blanco y negro)') : GUION },
+
+      { seccion: 'Resistencia y respaldo' },
+      { titulo: 'Protección', sig: (i, s) => `${s.ip}|${s.ik}`,
+        celda: (i, s) => s.ip
+          ? `<div class="flex flex-col items-center gap-2">
+               <svg viewBox="0 0 48 56" class="h-14 w-12 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M24 4l18 7v14c0 12-8 21-18 25C14 46 6 37 6 25V11z"/><path d="M24 17c-4 5-6 8-6 11a6 6 0 0012 0c0-3-2-6-6-11z" stroke-width="2"/></svg>
+               <span class="text-sm font-black text-slate-900">${escapeHtml(s.ip)}</span>
+               ${s.ik ? `<span class="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-bold text-slate-900">Antivandálico IK${s.ik}</span>` : ''}
+             </div>`
+          : GUION },
+      { titulo: 'Capacidad de grabación', sig: (i, s) => s.cap,
+        celda: (i, s) => s.cap ? celdaBarra(s.cap, 10, s.capTxt, i.almacenamiento) : GUION },
+
+      { seccion: 'Qué incluye cada opción' },
+      filaCheck('Audio bidireccional', 'audio'),
+      filaCheck('Giro motorizado 360°', 'ptz'),
+      filaCheck('Conexión Wi‑Fi', 'wifi'),
+      filaCheck('Monitoreo en app móvil', 'app'),
+      filaCheck('Instalación profesional', 'instalacion'),
+
+      { seccion: 'En palabras' },
+      { titulo: 'Ideal para', sig: (i) => i.idealPara, celda: (i) => celdaTexto(i.idealPara) },
+      { titulo: 'Contenido', sig: (i) => (i.incluye || []).join('|'),
+        celda: (i) => (i.incluye && i.incluye.length)
+          ? `<ul class="space-y-1.5 text-left text-xs text-slate-600">${i.incluye.map((x) => `<li class="flex gap-2"><span class="font-bold text-blue-600">✓</span><span>${escapeHtml(x)}</span></li>`).join('')}</ul>`
+          : GUION },
+      { titulo: 'Blindaje y montaje', compacto: true, sig: (i) => i.proteccion, celda: (i) => celdaTexto(i.proteccion) }
+    ];
+
+    function opcionesComparador(idSel) {
+      const max = state.presupuestoMax;
+      const pool = max ? state.catalogo.filter((p) => p.precio <= max || p.id === idSel) : state.catalogo;
+      return pool.map((op) =>
+        `<option value="${escapeHtml(op.id)}" ${op.id === idSel ? 'selected' : ''}>${escapeHtml(op.nombre)}</option>`).join('');
+    }
+
+    function renderComparador() {
+      const cont = $('contenedor-comparador');
+      if (!cont) return;
+
+      const nCols = window.matchMedia('(max-width: 767px)').matches ? 2 : 3;
+      const items = state.modelosComparados.slice(0, nCols).map((idSel) => enriquecerItem(state.catalogo.find((p) => p.id === idSel) || state.catalogo[0]));
+      const gridCols = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' }[items.length] || 'grid-cols-3';
+      const specs = items.map((it) => SPECS[it.id] || {});
+
+      const cabecera = items.map((item, colIdx) => {
+        const idEsc = escapeHtml(item.id);
+        const esRecomendado = state.idRecomendado === item.id;
+        return `
+        <div class="relative space-y-3 rounded-2xl p-3 text-center ${esRecomendado ? 'ring-2 ring-blue-600' : ''}">
+          ${esRecomendado ? '<span class="chip absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap bg-blue-600 text-white shadow">★ Recomendación Aegis Bot</span>' : ''}
+          <div class="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-slate-900">
+            <img src="${escapeHtml(item.imagen)}" alt="${escapeHtml(item.nombre)}" loading="lazy" decoding="async" class="h-full w-full object-cover" />
+            <span class="absolute bottom-2 right-2 rounded-md bg-slate-950/85 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-300">${escapeHtml(item.modelo)}</span>
+          </div>
+          <h3 class="flex min-h-[2.8rem] items-center justify-center text-sm font-extrabold leading-snug text-slate-900">${escapeHtml(item.nombre)}</h3>
+          <p class="tnum text-xl font-black text-blue-600">${formatoMXN(item.precio)} <span class="text-xs font-normal text-slate-400">+ IVA</span></p>
+          <button type="button" onclick="agregarAlCarrito('${idEsc}')" class="btn btn-blue w-full">Elegir este</button>
+          <button type="button" onclick="abrirDetalleProducto('${idEsc}')" class="text-xs font-semibold text-blue-600 hover:underline">Ver ficha completa →</button>
+        </div>`;
+      }).join('');
+
+      const cuerpo = FILAS.map((f) => {
+        if (f.seccion) {
+          return `<div class="bg-slate-50 px-3 py-3 text-[11px] md:px-6 font-extrabold uppercase tracking-[0.14em] text-blue-600">${f.seccion}</div>`;
+        }
+        return `
+        <div class="cmp-row border-b border-slate-100 px-3 md:px-6 ${f.compacto ? 'py-4' : 'py-7'}">
+          <p class="mb-4 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">${f.titulo}</p>
+          <div class="grid ${gridCols} gap-3 text-center md:gap-6">
+            ${items.map((it, i) => `<div class="flex min-w-0 flex-col items-center justify-start">${f.celda(it, specs[i])}</div>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
+
+      cont.innerHTML = `
+        <div class="card">
+          <div>
+            <div class="sticky z-20 rounded-t-3xl border-b border-slate-200/80 bg-white" style="top:var(--hdr-h,7rem)">
+              <div class="grid ${gridCols} gap-3 px-3 py-3 md:gap-6 md:px-6">
+                ${items.map((it, colIdx) => `<div class="min-w-0 space-y-2">
+                  <label class="sr-only" for="cmp-sel-${colIdx}">Modelo ${colIdx + 1}</label>
+                  <select id="cmp-sel-${colIdx}" onchange="cambiarModeloComparador(${colIdx}, this.value)" class="field py-2 text-xs font-semibold">${opcionesComparador(it.id)}</select>
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="tnum text-sm font-black text-blue-600">${formatoMXN(it.precio)}</p>
+                    <button type="button" onclick="agregarAlCarrito('${escapeHtml(it.id)}')" class="btn btn-blue px-3 py-1.5 text-xs">Elegir</button>
+                  </div>
+                </div>`).join('')}
+              </div>
+            </div>
+            <div class="grid ${gridCols} gap-3 border-b border-slate-100 px-3 pb-6 pt-8 md:gap-6 md:px-6">${cabecera}</div>
+            ${cuerpo}
+          </div>
+        </div>`;
+    }
+
+    // =====================================================
+    // CALIFICACIONES, WHATSAPP, ASISTENTE Y AHORRO DE PAQUETES
+    // =====================================================
+    state.resenas = leerStorage('aegis_resenas').filter((r) => r && r.productoId && r.estrellas >= 1 && r.estrellas <= 5);
+    state.orden = 'relevancia';
+    state.estrellasForm = 0;
+    state.soloVerificadas = false;
+
+    function cambiarOrden(valor) { state.orden = valor; renderCatalogo(); }
+
+    // ----- Ahorro de paquetes vs. comprar por separado (calculado con PRECIOS) -----
+    const COMPONENTES_PAQUETE = {
+      'PAQ-01': () => 4 * PRECIOS.camara['1080'] + PRECIOS.grabador[4],
+      'PAQ-02': () => 8 * PRECIOS.camara['2k'] + PRECIOS.grabador[8] + PRECIOS.hdd + Math.round(8 * PRECIOS.instalacionPorCamara * PRECIOS.factorPyME) + PRECIOS.app
+    };
+    function ahorroPaquete(item) {
+      const f = COMPONENTES_PAQUETE[item.id];
+      if (!f) return null;
+      const valor = f();
+      const ahorro = valor - item.precio;
+      return ahorro > 0 ? { valor, ahorro, pct: Math.round((ahorro / valor) * 100) } : null;
+    }
+    function bloquePrecio(item, tam = 'text-xl') {
+      const a = ahorroPaquete(item);
+      const base = `<span class="tnum ${tam} font-black tracking-tight text-slate-900">${formatoMXN(item.precio)}</span>`;
+      if (!a) return base;
+      return `${base}<span class="tnum ml-2 text-xs text-slate-400 line-through">${formatoMXN(a.valor)}</span><span class="mt-1 block text-[11px] font-bold text-emerald-600">Ahorras ${formatoMXN(a.ahorro)} (${a.pct}%) vs. comprar por separado</span>`;
+    }
+
+    // ----- Estrellas -----
+    const PATH_ESTRELLA = 'M10 1.6l2.6 5.5 6 .8-4.4 4.2 1.1 6L10 15.1 4.7 18.1l1.1-6L1.4 7.9l6-.8z';
+    const estrellaSvg = (cls) => `<svg viewBox="0 0 20 20" class="${cls}" fill="currentColor" aria-hidden="true"><path d="${PATH_ESTRELLA}"/></svg>`;
+    function estrellasHtml(prom, cls = 'h-4 w-4') {
+      const pct = Math.max(0, Math.min(100, (prom / 5) * 100));
+      const fila = estrellaSvg(cls).repeat(5);
+      return `<span class="stars relative inline-flex align-middle" role="img" aria-label="${prom.toFixed(1)} de 5 estrellas"><span class="flex text-slate-300">${fila}</span><span class="absolute inset-y-0 left-0 flex overflow-hidden text-amber-400" style="width:${pct}%">${fila}</span></span>`;
+    }
+
+    // ----- Datos de reseñas -----
+    const resenasDe = (id) => state.resenas.filter((r) => r.productoId === id);
+    function resumenResenas(id) {
+      const l = resenasDe(id);
+      const n = l.length;
+      const dist = [0, 0, 0, 0, 0, 0];
+      l.forEach((r) => { dist[r.estrellas]++; });
+      return { n, dist, prom: n ? l.reduce((s, r) => s + r.estrellas, 0) / n : 0, verificadas: l.filter((r) => r.verificada).length };
+    }
+    // Promedio bayesiano: evita que 1 reseña de 5★ supere a 40 reseñas de 4.8★
+    function puntajeBayes(id) {
+      const { n, prom } = resumenResenas(id);
+      const m = 3, C = 4;
+      return (n / (n + m)) * prom + (m / (n + m)) * C;
+    }
+    function pedidoVerificado(id) {
+      return state.pedidos.find((p) => !String(p.estatus).startsWith('Cancelado') && p.items.some((i) => i.id === id));
+    }
+
+    function resumenCalificacion(id) {
+      const r = resumenResenas(id);
+      const idEsc = escapeHtml(id);
+      if (!r.n) {
+        return `<button type="button" onclick="abrirDetalleProducto('${idEsc}')" class="mt-3 text-xs font-semibold text-slate-400 hover:text-blue-600">☆ Sin calificaciones aún · sé el primero</button>`;
+      }
+      return `<button type="button" onclick="abrirDetalleProducto('${idEsc}')" class="mt-3 inline-flex items-center gap-2 text-xs" aria-label="${r.prom.toFixed(1)} de 5, ${r.n} reseñas. Ver reseñas">
+        ${estrellasHtml(r.prom)}<span class="tnum font-bold text-slate-900">${r.prom.toFixed(1)}</span><span class="text-slate-400">(${r.n})</span>
+        ${r.verificadas ? `<span class="font-semibold text-emerald-600">✓ ${r.verificadas} verificada${r.verificadas === 1 ? '' : 's'}</span>` : ''}
+      </button>`;
+    }
+
+    function celdaCalificacion(id) {
+      const r = resumenResenas(id);
+      if (!r.n) return '<span class="text-xs text-slate-400">Sin reseñas aún</span>';
+      return `${estrellasHtml(r.prom, 'h-5 w-5')}<p class="tnum mt-1 text-sm font-bold text-slate-900">${r.prom.toFixed(1)} <span class="font-normal text-slate-400">(${r.n} ${r.n === 1 ? 'reseña' : 'reseñas'})</span></p>`;
+    }
+
+    // ----- Sección de reseñas en el modal de detalle -----
+    const ETIQUETAS_ESTRELLAS = ['', 'Malo', 'Regular', 'Bueno', 'Muy bueno', 'Excelente'];
+
+    function renderResenas(id) {
+      const cont = $('det-resenas');
+      if (!cont) return;
+      const idEsc = escapeHtml(id);
+      const r = resumenResenas(id);
+      const compro = !!pedidoVerificado(id);
+      const yaReseno = resenasDe(id).some((x) => x.mia);
+      state.estrellasForm = 0;
+
+      const barras = [5, 4, 3, 2, 1].map((n) => {
+        const pct = r.n ? (r.dist[n] / r.n) * 100 : 0;
+        return `<div class="flex items-center gap-3 text-xs"><span class="tnum w-6 text-slate-500">${n} ★</span><div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-200"><div class="cmp-bar h-full rounded-full bg-amber-400" style="width:${pct.toFixed(1)}%"></div></div><span class="tnum w-8 text-right text-slate-400">${r.dist[n]}</span></div>`;
+      }).join('');
+
+      const resumen = r.n
+        ? `<div class="grid grid-cols-1 gap-6 sm:grid-cols-12">
+             <div class="text-center sm:col-span-4 sm:text-left">
+               <p class="tnum text-5xl font-black tracking-tight text-slate-900">${r.prom.toFixed(1)}</p>
+               <div class="mt-1">${estrellasHtml(r.prom, 'h-5 w-5')}</div>
+               <p class="mt-1 text-xs text-slate-500">${r.n} ${r.n === 1 ? 'reseña' : 'reseñas'} · ${r.verificadas} con compra verificada</p>
+             </div>
+             <div class="space-y-1.5 sm:col-span-8">${barras}</div>
+           </div>`
+        : `<p class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">Aún no hay reseñas de este producto. Si ya lo usas, tu experiencia ayuda a otros a decidir con confianza.</p>`;
+
+      const formulario = yaReseno
+        ? `<p class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">Ya calificaste este producto. ¡Gracias por tu opinión!</p>`
+        : `<details class="rounded-2xl border border-slate-200/80 p-4" ${r.n === 0 ? 'open' : ''}>
+             <summary class="flex cursor-pointer items-center justify-between text-sm font-bold text-slate-900">Escribir una reseña<svg class="chev h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8l4 4 4-4"/></svg></summary>
+             <form onsubmit="enviarResena(event, '${idEsc}')" class="mt-4 space-y-3" novalidate>
+               <div role="radiogroup" aria-label="Calificación" id="res-picker" class="flex items-center gap-1">
+                 ${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" aria-label="${n} ${n === 1 ? 'estrella' : 'estrellas'}" data-n="${n}" onclick="elegirEstrellas(${n})" class="res-star text-slate-300 transition-transform hover:scale-110">${estrellaSvg('h-8 w-8')}</button>`).join('')}
+                 <span id="res-estrellas-lbl" class="ml-2 text-xs font-semibold text-slate-500">Elige una calificación</span>
+               </div>
+               <input id="res-nombre" type="text" maxlength="40" autocomplete="given-name" placeholder="Tu nombre (basta con el nombre de pila)" class="field" />
+               <input id="res-titulo" type="text" maxlength="60" placeholder="Título (opcional)" class="field" />
+               <textarea id="res-comentario" rows="3" maxlength="500" placeholder="¿Cómo fue tu experiencia? (mínimo 10 caracteres)" class="field resize-none"></textarea>
+               <p class="text-[11px] leading-relaxed text-slate-400">${compro ? '✓ Encontramos un pedido tuyo con este producto: tu reseña se publicará como compra verificada.' : 'No encontramos un pedido tuyo con este producto: tu reseña se publicará como «sin compra verificada».'}</p>
+               <button type="submit" class="btn btn-blue">Publicar reseña</button>
+             </form>
+           </details>`;
+
+      cont.innerHTML = `
+        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <h4 class="text-lg font-extrabold tracking-tight text-slate-900">Calificaciones de clientes</h4>
+          ${r.n ? `<label class="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-600"><input type="checkbox" onchange="state.soloVerificadas=this.checked; renderListaResenas('${idEsc}')" ${state.soloVerificadas ? 'checked' : ''} class="h-4 w-4 rounded border-slate-300 text-blue-600" /> Solo compras verificadas</label>` : ''}
+        </div>
+        ${resumen}
+        <div id="res-lista" class="mt-6 space-y-3"></div>
+        <div class="mt-6">${formulario}</div>`;
+      renderListaResenas(id);
+    }
+
+    function renderListaResenas(id) {
+      const el = $('res-lista');
+      if (!el) return;
+      let lista = resenasDe(id).slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+      if (state.soloVerificadas) lista = lista.filter((x) => x.verificada);
+      if (!lista.length) { el.innerHTML = ''; return; }
+      el.innerHTML = lista.map((x) => {
+        const fecha = x.fecha ? new Date(x.fecha).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+        return `<article class="rounded-2xl border border-slate-200/80 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">${estrellasHtml(x.estrellas)}${x.titulo ? `<span class="text-sm font-bold text-slate-900">${escapeHtml(x.titulo)}</span>` : ''}</div>
+            <span class="text-[11px] text-slate-400">${escapeHtml(fecha)}</span>
+          </div>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600">${escapeHtml(x.comentario)}</p>
+          <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+            <span class="font-semibold text-slate-700">${escapeHtml(x.nombre)}</span>
+            ${x.verificada ? '<span class="rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">✓ Compra verificada</span>' : '<span class="text-slate-400">Sin compra verificada</span>'}
+            ${x.mia ? `<button type="button" onclick="eliminarMiResena('${escapeHtml(id)}')" class="ml-auto font-semibold text-red-600 hover:underline">Eliminar mi reseña</button>` : ''}
+          </div>
+        </article>`;
+      }).join('');
+    }
+
+    function elegirEstrellas(n) {
+      state.estrellasForm = n;
+      document.querySelectorAll('#res-picker .res-star').forEach((b) => {
+        const activo = Number(b.dataset.n) <= n;
+        b.classList.toggle('text-amber-400', activo);
+        b.classList.toggle('text-slate-300', !activo);
+        b.setAttribute('aria-checked', String(Number(b.dataset.n) === n));
+      });
+      $('res-estrellas-lbl').textContent = ETIQUETAS_ESTRELLAS[n];
+    }
+
+    function enviarResena(e, id) {
+      e.preventDefault();
+      const estrellas = state.estrellasForm | 0;
+      const nombre = $('res-nombre').value.trim();
+      const titulo = $('res-titulo').value.trim();
+      const comentario = $('res-comentario').value.trim();
+      if (resenasDe(id).some((x) => x.mia)) { mostrarToast('Ya calificaste este producto.'); return; }
+      if (estrellas < 1) { mostrarToast('Elige de 1 a 5 estrellas.'); return; }
+      if (nombre.length < 2) { mostrarToast('Escribe tu nombre.'); return; }
+      if (comentario.length < 10) { mostrarToast('Cuéntanos un poco más (mínimo 10 caracteres).'); return; }
+
+      const pedido = pedidoVerificado(id);
+      const resena = {
+        id: 'RES-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        productoId: id, estrellas, titulo, comentario, nombre,
+        verificada: !!pedido, folio: pedido ? pedido.folio : null,
+        fecha: new Date().toISOString(), mia: true
+      };
+      state.resenas.unshift(resena);
+      escribirStorage('aegis_resenas', state.resenas);
+      const { mia, ...paraServidor } = resena;
+      fetch('/api/resenas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': resena.id }, body: JSON.stringify(paraServidor) }).catch(() => {});
+      renderResenas(id);
+      renderCatalogo();
+      mostrarToast('¡Gracias por tu reseña!');
+    }
+
+    function eliminarMiResena(id) {
+      const mia = resenasDe(id).find((x) => x.mia);
+      if (!mia) return;
+      state.resenas = state.resenas.filter((x) => x !== mia);
+      escribirStorage('aegis_resenas', state.resenas);
+      fetch('/api/resenas/' + encodeURIComponent(mia.id), { method: 'DELETE' }).catch(() => {});
+      renderResenas(id);
+      renderCatalogo();
+      mostrarToast('Tu reseña fue eliminada.');
+    }
+
+    async function sincronizarResenas() {
+      try {
+        const res = await fetch('/api/resenas');
+        if (!res.ok) return;
+        const remotas = await res.json();
+        if (!Array.isArray(remotas)) return;
+        const propias = state.resenas.filter((x) => x.mia);
+        const idsPropios = new Set(propias.map((x) => x.id));
+        const limpias = remotas
+          .filter((x) => x && x.productoId && !idsPropios.has(x.id))
+          .map((x) => ({ ...x, mia: false, estrellas: Math.min(5, Math.max(1, parseInt(x.estrellas, 10) || 1)) }));
+        state.resenas = [...propias, ...limpias];
+        escribirStorage('aegis_resenas', state.resenas);
+      } catch (_) {}
+    }
+
+    // ----- WhatsApp -----
+    function abrirWhatsApp(texto) {
+      if (!CONFIG.whatsapp) return;
+      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+    }
+    function enviarCotizacionWhatsApp() {
+      const c = calcularCotizacion();
+      const extras = [$('acc-hdd').checked && 'disco 1 TB', $('acc-ups').checked && 'UPS', $('acc-app').checked && 'app móvil'].filter(Boolean);
+      abrirWhatsApp([
+        'Hola, quiero cotizar un sistema de videovigilancia:',
+        `• Entorno: ${c.inmueble === 'PyME' ? 'Comercial' : 'Residencial'}`,
+        `• Cámaras: ${c.numCamaras} (${$('cot-resolucion').selectedOptions[0].textContent})`,
+        `• ${c.incluyeInstalacion ? 'Con instalación' : 'Solo equipo'}${extras.length ? ' + ' + extras.join(', ') : ''}`,
+        `• Total estimado: ${formatoMXN(c.total)} MXN con IVA`
+      ].join('\n'));
+    }
+    function enviarCarritoWhatsApp() {
+      const lineas = state.carrito.map((i) => `• ${i.cantidad}× ${i.nombre}`);
+      const { total } = totalesDe(state.carrito);
+      abrirWhatsApp(['Hola, tengo una duda sobre mi carrito:', ...(lineas.length ? lineas : ['(carrito vacío)']), `Total: ${formatoMXN(total)} MXN con IVA`].join('\n'));
+    }
+    function preguntarProductoWhatsApp(id) {
+      const p = state.catalogo.find((x) => x.id === id);
+      if (p) abrirWhatsApp(`Hola, me interesa "${p.nombre}" (${p.modelo || p.id}). ¿Me pueden dar más información?`);
+    }
+
+    function renderContacto() {
+      const el = $('bloque-contacto');
+      if (!el) return;
+      const filas = [];
+      if (CONFIG.whatsapp) filas.push(['WhatsApp', '+' + CONFIG.whatsapp, 'https://wa.me/' + CONFIG.whatsapp]);
+      if (CONFIG.telefono) filas.push(['Teléfono', CONFIG.telefono, 'tel:' + CONFIG.telefono.replace(/[^\d+]/g, '')]);
+      if (CONFIG.email) filas.push(['Correo', CONFIG.email, 'mailto:' + CONFIG.email]);
+      if (CONFIG.horario) filas.push(['Horario', CONFIG.horario, null]);
+      if (CONFIG.cobertura) filas.push(['Cobertura', CONFIG.cobertura, null]);
+      el.classList.toggle('hidden', filas.length === 0);
+      if (!filas.length) return;
+      el.innerHTML = `<h3 class="text-lg font-extrabold tracking-tight text-slate-900">Contacto y cobertura</h3>
+        <dl class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">${filas.map(([t, v, h]) =>
+          `<div><dt class="text-[11px] font-bold uppercase tracking-widest text-slate-400">${t}</dt><dd class="mt-1 text-sm font-semibold text-slate-900">${h ? `<a href="${escapeHtml(h)}" class="text-blue-600 hover:underline">${escapeHtml(v)}</a>` : escapeHtml(v)}</dd></div>`).join('')}</dl>`;
+    }
+
+    // ----- Asistente Aegis Bot: 3 preguntas -> cotización precargada -----
+    const GUIA = { paso: 0, r: {} };
+    const PREGUNTAS_GUIA = [
+      { k: 'lugar', t: '¿Dónde lo instalarás?', ops: [['Hogar', 'Hogar'], ['PyME', 'Negocio u oficina']] },
+      { k: 'camaras', t: '¿Cuántas cámaras necesitas?', ops: [[2, '1 – 2'], [4, '3 – 4'], [8, '5 – 8'], [12, '9 o más']] },
+      { k: 'prioridad', t: '¿Qué te importa más?', ops: [['presupuesto', 'Cuidar el presupuesto'], ['noche', 'Ver bien de noche, a color'], ['calidad', 'Máxima calidad de imagen']] }
+    ];
+    const NOMBRE_RES = { '1080': 'Full HD 1080p', '2k': '2K con visión nocturna a color', '4k': '4K Ultra HD' };
+
+    const guiaBtn = (label, accion, primario) =>
+      `<button type="button" onclick="${accion}" class="guia-btn${primario ? ' guia-btn--primary' : ''}">${label}</button>`;
+
+    function guiaMostrar(texto, botonesHtml) {
+      if ($('texto-guia')) $('texto-guia').textContent = texto;
+      if ($('guia-opciones')) $('guia-opciones').innerHTML = botonesHtml;
+    }
+    function guiaInicio(texto) {
+      GUIA.paso = 0; GUIA.r = {};
+      guiaMostrar(texto || MENSAJES_GUIA.catalogo,
+        guiaBtn('Recomiéndame un sistema', 'guiaPregunta()', true) +
+        guiaBtn('Comparar equipos', "cambiarVista('comparador')") +
+        guiaBtn('Armar a medida', "cambiarVista('cotizador')"));
+    }
+    function guiaPregunta() {
+      const q = PREGUNTAS_GUIA[GUIA.paso];
+      guiaMostrar(`(${GUIA.paso + 1}/${PREGUNTAS_GUIA.length}) ${q.t}`, q.ops.map(([, l], i) => guiaBtn(l, `guiaResponder(${i})`)).join(''));
+    }
+    function guiaResponder(i) {
+      const q = PREGUNTAS_GUIA[GUIA.paso];
+      GUIA.r[q.k] = q.ops[i][0];
+      GUIA.paso++;
+      if (GUIA.paso < PREGUNTAS_GUIA.length) guiaPregunta(); else guiaResultado();
+    }
+    function guiaResultado() {
+      const { lugar, camaras, prioridad } = GUIA.r;
+      const res = { presupuesto: '1080', noche: '2k', calidad: '4k' }[prioridad];
+      document.querySelector(`input[name="inmueble"][value="${lugar}"]`).checked = true;
+      $('cot-camaras').value = camaras;
+      $('cot-resolucion').value = res;
+      $('cot-cableado').value = 'instalacion';
+      $('acc-hdd').checked = true;
+      $('acc-ups').checked = lugar === 'PyME';
+      $('acc-app').checked = true;
+      const c = recalcularCotizador();
+
+      let sugeridoId = null;
+      if (lugar === 'Hogar' && camaras <= 4 && prioridad === 'presupuesto') sugeridoId = 'PAQ-01';
+      else if (lugar === 'PyME' && camaras >= 5 && camaras <= 8) sugeridoId = 'PAQ-02';
+      else if (camaras <= 2 && prioridad !== 'presupuesto') sugeridoId = 'PROD-01';
+      const sug = sugeridoId && state.catalogo.find((p) => p.id === sugeridoId);
+
+      const extras = ['disco de 1 TB', lugar === 'PyME' && 'UPS', 'app móvil'].filter(Boolean).join(', ');
+      let texto = `Te armé ${camaras} cámaras ${NOMBRE_RES[res]} con instalación, ${extras}. Total estimado: ${formatoMXN(c.total)} con IVA (ya quedó en el cotizador).`;
+      if (sug) texto += ` También te sirve «${sug.nombre}» (${formatoMXN(sug.precio)} + IVA).`;
+      guiaMostrar(texto,
+        guiaBtn('Ver mi cotización', "cambiarVista('cotizador')", true) +
+        (sug ? guiaBtn('Ver ese paquete', `abrirDetalleProducto('${escapeHtml(sug.id)}')`) : '') +
+        guiaBtn('Empezar de nuevo', 'guiaPregunta0()'));
+    }
+    function guiaPregunta0() { GUIA.paso = 0; GUIA.r = {}; guiaPregunta(); }
+
+    // ----- Añadibles (upsell) en Resumen y pago -----
+function listaAddons() {
+      const serv = state.catalogo.find((p) => p.id === 'SERV-01');
+      const lista = [
+        { id: 'ADD-HDD', corto: 'Disco duro 1 TB', nombre: 'Almacenamiento extra: disco 1 TB', desc: 'Más días de grabación 24/7', precio: PRECIOS.hdd, tipo: 'producto' },
+        { id: 'ADD-UPS', corto: 'UPS de respaldo', nombre: 'UPS con batería de respaldo', desc: 'Grabas aun sin luz', precio: PRECIOS.ups, tipo: 'producto' }
+      ];
+      if (serv) {
+        lista.push({
+          id: serv.id, corto: 'Instalación profesional', nombre: serv.nombre, desc: 'Montaje y cableado, 1 a 4 cámaras', precio: serv.precio, tipo: serv.tipo,
+          oculto: (c) => c.some((i) => i.id !== serv.id && (i.id === 'PAQ-02' || i.tipo === 'ambos' || i.tipo === 'servicio'))
+        });
+      }
+      return lista;
+    }
+
+function renderAddons() {
+      const panel = $('panel-addons');
+      if (!panel) return;
+      const carrito = state.carrito;
+      const items = carrito.length
+        ? listaAddons().filter((a) => !a.oculto || !a.oculto(carrito) || carrito.some((i) => i.id === a.id))
+        : [];
+      panel.classList.toggle('hidden', items.length === 0);
+      if (!items.length) { panel.innerHTML = ''; return; }
+      panel.innerHTML = `
+        <p class="mb-3 text-[11px] font-bold uppercase tracking-widest text-blue-600">Completa tu sistema</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-${Math.min(items.length, 3)}">
+          ${items.map((a) => {
+            const en = carrito.some((i) => i.id === a.id);
+            return `<button type="button" role="switch" aria-checked="${en}" data-addon="${escapeHtml(a.id)}" onclick="toggleAddon('${escapeHtml(a.id)}')" class="addon-btn">
+              <span class="addon-check" aria-hidden="true"><svg viewBox="0 0 20 20" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg></span>
+              <span class="text-sm font-bold leading-snug">${escapeHtml(a.corto)}</span>
+              <span class="addon-desc text-[11px] leading-snug">${escapeHtml(a.desc)}</span>
+              <span class="tnum mt-1 text-sm font-black">+ ${formatoMXN(a.precio)} <span class="addon-desc text-[10px] font-medium">+ IVA</span></span>
+            </button>`;
+          }).join('')}
+        </div>`;
+    }
+
+    function toggleAddon(id) {
+      const a = listaAddons().find((x) => x.id === id);
+      if (!a) return;
+      if (state.carrito.some((i) => i.id === id)) {
+        state.carrito = state.carrito.filter((i) => i.id !== id);
+        mostrarToast(`"${a.nombre}" quitado del pedido`);
+      } else {
+        state.carrito.push({ id: a.id, nombre: a.nombre, tipo: a.tipo, precio: a.precio, cantidad: 1 });
+        mostrarToast(`"${a.nombre}" agregado al pedido`);
+      }
+      guardarCarrito();
+      actualizarVistaCarrito();
+      document.querySelector(`[data-addon="${id}"]`)?.focus({ preventScroll: true });
+    }
+
+    // Modo Día / Noche con persistencia en localStorage
+    function aplicarTema(oscuro) {
+      document.documentElement.classList.toggle('dark', oscuro);
+      $('icono-sol')?.classList.toggle('hidden', !oscuro);
+      $('icono-luna')?.classList.toggle('hidden', oscuro);
+      $('btn-tema')?.setAttribute('aria-pressed', String(oscuro));
+    }
+
+    function toggleTema() {
+      const esOscuro = !document.documentElement.classList.contains('dark');
+      aplicarTema(esOscuro);
+      try { localStorage.setItem('aegis_tema', esOscuro ? 'dark' : 'light'); } catch (_) {}
+      mostrarToast(esOscuro ? 'Modo Noche activado' : 'Modo Día activado');
+    }
+
+    // Mensajes contextuales del Dron Guía Aegis Bot
+    const MENSAJES_GUIA = {
+      catalogo: 'Abre cualquier ficha para ver especificaciones y reseñas verificadas de clientes. ¿No sabes cuál elegir? Dime 3 cosas y te recomiendo.',
+      comparador: 'Compara hasta 3 modelos: barras para resolución, alcance y capacidad, íconos para protección y ✓ / — para lo que incluye cada uno.',
+      cotizador: 'Mueve el deslizador de cámaras: el grabador NVR y el IVA se recalculan al instante sin recargar la página.',
+      carrito: 'El sistema asigna tu entrega de equipos y valida que tu cita de instalación no tenga traslapes de horario.',
+      pedidos: 'Recuerda: puedes cancelar citas con al menos 24 horas de anticipación o solicitar garantía por 6 meses.'
+    };
+
+    function toggleBurbujaGuia() {
+      const b = $('burbuja-guia');
+      if (!b) return;
+      b.dataset.hidden = String(b.dataset.hidden !== 'true');
+      $('btn-aegis-bot')?.setAttribute('aria-expanded', String(b.dataset.hidden !== 'true'));
+    }
+
+    const _cambiarVistaBase = cambiarVista;
+    const TITULO_BASE = document.title;
+    const TITULOS = {
+      comparador: 'Comparar modelos | AEGIS Control',
+      cotizador: 'Cotizador CCTV | AEGIS Control',
+      carrito: 'Agenda y pago | AEGIS Control',
+      pedidos: 'Gestión y soporte | AEGIS Control'
+    };
+    cambiarVista = function (vista, opciones = {}) {
+      _cambiarVistaBase(vista);
+      if (vista === 'comparador') renderComparador();
+      guiaInicio(MENSAJES_GUIA[vista]);
+      document.title = TITULOS[vista] || TITULO_BASE;
+      if (!opciones.sinHistorial) {
+        const destino = '#/' + vista;
+        try { if (location.hash !== destino) history.pushState({ vista }, '', destino); } catch (_) {}
+      }
+    };
+
+    function vistaDesdeHash() {
+      const m = location.hash.match(/^#\/(\w+)$/);
+      return m && VISTAS.includes(m[1]) ? m[1] : 'catalogo';
+    }
+    window.addEventListener('popstate', () => {
+      if (location.hash && !location.hash.startsWith('#/')) return; // anclas como #contenido
+      cambiarVista(vistaDesdeHash(), { sinHistorial: true });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      aplicarTema(document.documentElement.classList.contains('dark'));
+      $('cot-cableado').options[0].textContent = `Instalación certificada ISO — ${formatoMXN(PRECIOS.instalacionPorCamara)} por cámara`;
+      document.querySelectorAll('[data-wa]').forEach((b) => b.classList.toggle('hidden', !CONFIG.whatsapp));
+      renderContacto();
+      renderComparador();
+      guiaInicio(MENSAJES_GUIA.catalogo);
+
+      const fijarAlturaHeader = () => document.documentElement.style.setProperty('--hdr-h', $('encabezado').offsetHeight + 'px');
+      fijarAlturaHeader();
+      window.addEventListener('resize', fijarAlturaHeader, { passive: true });
+      if (document.fonts) document.fonts.ready.then(fijarAlturaHeader);
+
+      window.matchMedia('(max-width: 767px)').addEventListener('change', () => {
+        if (!$('vista-comparador').classList.contains('hidden')) renderComparador();
+      });
+
+      const inicial = vistaDesdeHash();
+      if (location.hash.startsWith('#/') && inicial !== 'catalogo') cambiarVista(inicial, { sinHistorial: true });
+    });
+
+  </script>
+</body>
+</html>
