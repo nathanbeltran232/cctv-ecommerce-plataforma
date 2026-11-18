@@ -406,6 +406,13 @@
       </a>
 
       <div class="flex items-center gap-2.5">
+      <!-- Boton de Usuario / Sesion -->
+        <div id="contenedor-usuario" class="flex items-center">
+          <button id="btn-login-modal" type="button" onclick="abrirModalAuth()" class="btn btn-ghost h-10 px-3 text-xs">
+            Iniciar sesión
+          </button>
+        </div>
+
         <!-- Botón Modo Día / Noche -->
         <button id="btn-tema" type="button" onclick="toggleTema()" aria-label="Cambiar entre modo día y noche"
           class="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-slate-200 transition-transform duration-200 ease-spring hover:bg-white/[0.14] active:scale-90">
@@ -2381,7 +2388,157 @@ function renderAddons() {
       const inicial = vistaDesdeHash();
       if (location.hash.startsWith('#/') && inicial !== 'catalogo') cambiarVista(inicial, { sinHistorial: true });
     });
+    
+    let usuarioActivo = JSON.parse(localStorage.getItem('cctv_usuario') || 'null');
 
+    function actualizarEstadoUsuario() {
+      const contenedor = $('contenedor-usuario');
+      if (!contenedor) return;
+
+      if (usuarioActivo) {
+        contenedor.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-white">Hola, ${escapeHtml(usuarioActivo.name.split(' ')[0])}</span>
+            <button type="button" onclick="cerrarSesion()" class="text-[10px] text-red-300 hover:underline">Salir</button>
+          </div>
+        `;
+        if ($('chk-nombre')) $('chk-nombre').value = usuarioActivo.name || '';
+        if ($('chk-email')) $('chk-email').value = usuarioActivo.email || '';
+        if ($('chk-direccion')) $('chk-direccion').value = usuarioActivo.address || '';
+      } else {
+        contenedor.innerHTML = `
+          <button id="btn-login-modal" type="button" onclick="abrirModalAuth()" class="btn btn-ghost h-10 px-3 text-xs">
+            Iniciar sesión
+          </button>
+        `;
+      }
+    }
+
+    function abrirModalAuth() {
+      $('dlg-auth').showModal();
+    }
+
+    function cambiarTabAuth(tab) {
+      const esLogin = tab === 'login';
+      $('form-login').classList.toggle('hidden', !esLogin);
+      $('form-register').classList.toggle('hidden', esLogin);
+      $('tab-auth-login').className = esLogin ? 'text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-sm font-semibold text-slate-400 pb-1';
+      $('tab-auth-register').className = !esLogin ? 'text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-1' : 'text-sm font-semibold text-slate-400 pb-1';
+    }
+
+    async function ejecutarRegistro(e) {
+      e.preventDefault();
+      const name = $('reg-name').value.trim();
+      const email = $('reg-email').value.trim();
+      const address = $('reg-address').value.trim();
+      const password = $('reg-password').value;
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, address })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          mostrarToast(data.error || 'Error al registrarse');
+          return;
+        }
+
+        usuarioActivo = data.user;
+        localStorage.setItem('cctv_usuario', JSON.stringify(usuarioActivo));
+        $('dlg-auth').close();
+        actualizarEstadoUsuario();
+        mostrarToast('Cuenta creada e iniciada con exito');
+      } catch (_) {
+        mostrarToast('Error de comunicacion con el servidor');
+      }
+    }
+
+    async function ejecutarLogin(e) {
+      e.preventDefault();
+      const email = $('login-email').value.trim();
+      const password = $('login-password').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          mostrarToast(data.error || 'Credenciales invalidas');
+          return;
+        }
+
+        usuarioActivo = data.user;
+        localStorage.setItem('cctv_usuario', JSON.stringify(usuarioActivo));
+        $('dlg-auth').close();
+        actualizarEstadoUsuario();
+        mostrarToast(`Bienvenido de vuelta, ${usuarioActivo.name}`);
+      } catch (_) {
+        mostrarToast('Error de comunicacion con el servidor');
+      }
+    }
+
+    function cerrarSesion() {
+      usuarioActivo = null;
+      localStorage.removeItem('cctv_usuario');
+      actualizarEstadoUsuario();
+      mostrarToast('Sesion cerrada');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      actualizarEstadoUsuario();
+    });
   </script>
+
+  <!-- Modal de Autenticacion -->
+  <dialog id="dlg-auth" class="card max-w-md w-full p-6 shadow-2xl bg-white text-slate-800">
+    <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+      <div class="flex gap-4">
+        <button type="button" id="tab-auth-login" onclick="cambiarTabAuth('login')" class="text-sm font-bold text-blue-600 border-b-2 border-blue-600 pb-1">Iniciar sesión</button>
+        <button type="button" id="tab-auth-register" onclick="cambiarTabAuth('register')" class="text-sm font-semibold text-slate-400 pb-1">Registrarse</button>
+      </div>
+      <button type="button" onclick="document.getElementById('dlg-auth').close()" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+
+    <!-- Formulario de Login -->
+    <form id="form-login" onsubmit="ejecutarLogin(event)" class="space-y-3">
+      <div>
+        <label class="label">Correo electrónico</label>
+        <input type="email" id="login-email" required class="field" placeholder="correo@ejemplo.com" />
+      </div>
+      <div>
+        <label class="label">Contraseña</label>
+        <input type="password" id="login-password" required class="field" placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn btn-blue w-full mt-4">Ingresar</button>
+    </form>
+
+    <!-- Formulario de Registro -->
+    <form id="form-register" onsubmit="ejecutarRegistro(event)" class="space-y-3 hidden">
+      <div>
+        <label class="label">Nombre completo / Empresa</label>
+        <input type="text" id="reg-name" required class="field" placeholder="Juan Perez" />
+      </div>
+      <div>
+        <label class="label">Correo electrónico</label>
+        <input type="email" id="reg-email" required class="field" placeholder="correo@ejemplo.com" />
+      </div>
+      <div>
+        <label class="label">Dirección (para entregas e instalaciones)</label>
+        <input type="text" id="reg-address" required class="field" placeholder="Calle, numero, colonia, alcaldia" />
+      </div>
+      <div>
+        <label class="label">Contraseña</label>
+        <input type="password" id="reg-password" required class="field" placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn btn-blue w-full mt-4">Crear cuenta</button>
+    </form>
+  </dialog>
 </body>
 </html>

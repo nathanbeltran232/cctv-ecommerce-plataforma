@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const catalogRoutes = require('./routes/catalog');
 const quotationRoutes = require('./routes/quotation');
+const authRoutes = require('./routes/auth');
 const { processOrder, cancelOrder, requestReturn, getBookedAppointments } = require('./controllers/orderController');
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Rutas de API
 app.use('/api', catalogRoutes);
 app.use('/api/quotation', quotationRoutes);
+app.use('/api/auth', authRoutes);
 
 // Rutas de Pedidos y Logistica
 app.post(['/api/pedidos', '/api/v1/pedidos'], processOrder);
