@@ -1,0 +1,81 @@
+[
+  {
+    "folio": "ORD-357258",
+    "cliente": "Abarrotes Rosi",
+    "email": "abarrotesRosi@gmail.com",
+    "direccion": "abarrotes rosi cdmx",
+    "metodoPago": "Tarjeta",
+    "items": [
+      {
+        "id": "COT-139903",
+        "nombre": "Cotización CCTV Hogar (4 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 6550,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 6550,
+    "iva": 1048,
+    "total": 7598,
+    "fechaEntregaSistema": "viernes, 20 de noviembre de 2026",
+    "citaInstalacion": "2026-11-20T09:00:00",
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-18T00:36:01.344Z"
+  },
+  {
+    "folio": "ORD-749300",
+    "cliente": "Abarrotes Rosi",
+    "email": "abarrotesRosi@gmail.com",
+    "direccion": "abarrotes rosi cdmx",
+    "metodoPago": "Tarjeta",
+    "items": [
+      {
+        "id": "cam-bala-1080p",
+        "nombre": "Cámara Tipo Bala Exterior 1080p",
+        "cantidad": 1
+      },
+      {
+        "id": "ADD-UPS",
+        "nombre": "UPS con batería de respaldo",
+        "tipo": "producto",
+        "precio": 1450,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": null,
+    "iva": null,
+    "total": null,
+    "fechaEntregaSistema": "viernes, 20 de noviembre de 2026",
+    "citaInstalacion": null,
+    "estatus": "Cancelado por el cliente (reembolso en proceso)",
+    "creadoEn": "2026-11-18T00:26:59.187Z"
+  },
+  {
+    "folio": "ORD-346127",
+    "cliente": "Abarrotes Rosi",
+    "email": "abarrotesRosi@gmail.com",
+    "direccion": "abarrotes rosi cdmx",
+    "metodoPago": "Tarjeta",
+    "items": [
+      {
+        "id": "cam-bala-1080p",
+        "nombre": "Cámara Tipo Bala Exterior 1080p",
+        "cantidad": 1
+      },
+      {
+        "id": "ADD-HDD",
+        "nombre": "Almacenamiento extra: disco 1 TB",
+        "tipo": "producto",
+        "precio": 1100,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": null,
+    "iva": null,
+    "total": null,
+    "fechaEntregaSistema": "viernes, 20 de noviembre de 2026",
+    "citaInstalacion": null,
+    "estatus": "Cancelado por el cliente (reembolso en proceso)",
+    "creadoEn": "2026-11-18T00:23:26.037Z"
+  }
+]

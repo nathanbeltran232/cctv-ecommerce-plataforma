@@ -1063,15 +1063,21 @@
 
     async function sincronizarConBackend() {
       try {
-        const res = await fetch('/api/productos');
-        if (res.ok) {
-          const data = await res.json();
+        const resProd = await fetch('/api/productos');
+        if (resProd.ok) {
+          const data = await resProd.json();
           if (Array.isArray(data) && data.length > 0) {
             state.catalogo = data.map((item) => ({
               ...item,
               imagen: item.imagen || IMAGENES_POR_ID[item.id] || IMAGENES_POR_ID['PAQ-01']
             }));
           }
+        }
+
+        const resCal = await fetch('/api/calendario');
+        if (resCal.ok) {
+          const calendarData = await resCal.json();
+          state.citasOcupadas = calendarData;
         }
       } catch (_) {}
     }
@@ -1521,23 +1527,30 @@
       cambiarVista('pedidos');
     }
 
-    function cancelarPedido(folio) {
+    async function cancelarPedido(folio) {
       const pedido = state.pedidos.find((p) => p.folio === folio);
       if (!pedido) return;
 
-      if (pedido.citaInstalacion) {
-        const horasRestantes = (new Date(pedido.citaInstalacion) - new Date()) / 36e5;
-        if (horasRestantes < HORAS_MIN_CANCELACION) {
-          mostrarToast('No se permite cancelar citas con menos de 24 horas de anticipación.');
+      try {
+        const res = await fetch(`/api/pedidos/${folio}/cancelar`, { method: 'PATCH' });
+        const data = await res.json();
+
+        if (!res.ok) {
+          mostrarToast(data.error || 'No se pudo cancelar el pedido');
           return;
         }
-        state.citasOcupadas = state.citasOcupadas.filter((c) => c !== pedido.citaInstalacion.slice(0, 16).replace('T', '_'));
-      }
 
-      pedido.estatus = 'Cancelado por el cliente (reembolso en proceso)';
-      escribirStorage('cctv_pedidos', state.pedidos);
-      renderPedidos();
-      mostrarToast(`Pedido ${folio} cancelado correctamente.`);
+        if (pedido.citaInstalacion) {
+          state.citasOcupadas = state.citasOcupadas.filter((c) => c !== pedido.citaInstalacion.slice(0, 16).replace('T', '_'));
+        }
+
+        pedido.estatus = 'Cancelado por el cliente (reembolso en proceso)';
+        escribirStorage('cctv_pedidos', state.pedidos);
+        renderPedidos();
+        mostrarToast(`Pedido ${folio} cancelado correctamente.`);
+      } catch (error) {
+        mostrarToast('Error de comunicacion con el servidor.');
+      }
     }
 
     function solicitarDevolucion(folio) {
@@ -1547,16 +1560,32 @@
       $('dlg-motivo').focus();
     }
 
-    function confirmarDevolucion(e) {
+    async function confirmarDevolucion(e) {
       e.preventDefault();
       const pedido = state.pedidos.find((p) => p.folio === state.folioDevolucion);
       const motivo = $('dlg-motivo').value.trim();
       if (!pedido || !motivo) return;
-      pedido.estatus = `Devolución solicitada: "${motivo}"`;
-      escribirStorage('cctv_pedidos', state.pedidos);
-      $('dlg-devolucion').close();
-      renderPedidos();
-      mostrarToast(`Solicitud de devolución registrada para ${pedido.folio}.`);
+
+      try {
+        const res = await fetch(`/api/pedidos/${pedido.folio}/devolucion`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: motivo })
+        });
+
+        if (!res.ok) {
+          mostrarToast('Error al registrar devolucion.');
+          return;
+        }
+
+        pedido.estatus = `Devolución solicitada: "${motivo}"`;
+        escribirStorage('cctv_pedidos', state.pedidos);
+        $('dlg-devolucion').close();
+        renderPedidos();
+        mostrarToast(`Solicitud de devolución registrada para ${pedido.folio}.`);
+      } catch (error) {
+        mostrarToast('Error de comunicacion con el servidor.');
+      }
     }
 
     function renderPedidos() {
