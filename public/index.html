@@ -863,10 +863,33 @@
               <input type="password" id="chk-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV" aria-label="CVV" class="field" />
             </div>
 
-            <label class="flex cursor-pointer items-start gap-3 pt-1 text-xs leading-relaxed text-slate-600">
-              <input type="checkbox" id="chk-legal" required class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span>Acepto los términos de garantía de 6 meses (LFPC/PROFECO), la política de cancelación (≥ 24 hrs) y el Aviso de Privacidad (derechos ARCO — LFPDPPP).</span>
-            </label>
+            <!-- Contenedor SPEI -->
+            <div id="info-spei" class="hidden rounded-xl border border-blue-500/20 bg-[#161d2a] p-4 text-xs text-slate-300 space-y-1.5 shadow-inner">
+              <p class="font-bold text-blue-400">Transferencia electrónica SPEI / CoDi:</p>
+              <p>Banco: <strong class="text-white">STP</strong></p>
+              <p>CLABE interbancaria: <strong class="font-mono text-cyan-400 text-sm">646180157000000004</strong></p>
+              <p class="text-slate-400">Concepto: <span class="text-slate-200">Folio asignado al confirmar el pedido</span></p>
+            </div>
+
+            <!-- Contenedor Mercado Pago / PayPal -->
+            <div id="info-mercadopago" class="hidden rounded-xl border border-blue-500/20 bg-[#161d2a] p-4 text-xs text-slate-300 space-y-1 shadow-inner">
+              <p class="font-bold text-blue-400">Simulación Pasarela Digital:</p>
+              <p class="text-slate-400 leading-relaxed">Al presionar "Confirmar y pagar", se simulará la aprobación inmediata del cargo mediante token de pasarela segura.</p>
+            </div>
+
+            <div class="space-y-1 pt-1">
+              <label class="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-slate-600">
+                <input type="checkbox" id="chk-legal" required class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <span>Acepto los términos de servicio, políticas de cancelación y garantía.</span>
+              </label>
+              <div class="flex gap-2 text-[11px] text-blue-600 pl-7">
+                <button type="button" onclick="mostrarPolitica('garantia')" class="underline hover:text-blue-800">Garantía (6 meses)</button>
+                <span>•</span>
+                <button type="button" onclick="mostrarPolitica('cancelacion')" class="underline hover:text-blue-800">Cancelaciones (≥24 hrs)</button>
+                <span>•</span>
+                <button type="button" onclick="mostrarPolitica('privacidad')" class="underline hover:text-blue-800">Aviso de Privacidad</button>
+              </div>
+            </div>
 
             <button type="submit" id="btn-pagar" data-testid="pay-submit-btn" class="btn btn-blue w-full py-3.5">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
@@ -985,6 +1008,7 @@
     const IMAGENES_POR_ID = {
       'PAQ-01': 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=640&q=75',
       'PAQ-02': 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=640&q=75',
+      'PAQ-03': 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=640&q=75',
       'PROD-01': 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=640&q=75',
       'PROD-02': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=640&q=75',
       'SERV-01': 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=640&q=75',
@@ -1461,7 +1485,11 @@
     }
 
     function toggleCamposTarjeta() {
-      $('campos-tarjeta').classList.toggle('hidden', $('chk-metodo').value !== 'Tarjeta');
+      const paymentMethod = $('chk-metodo').value;
+      $('campos-tarjeta').classList.toggle('hidden', paymentMethod !== 'Tarjeta');
+      $('info-spei').classList.toggle('hidden', paymentMethod !== 'SPEI_CoDi');
+      $('info-mercadopago').classList.toggle('hidden', paymentMethod !== 'MercadoPago');
+      checkFormValidity();
     }
 
     // =====================================================
@@ -1532,6 +1560,36 @@
 
       mostrarToast(`Pago exitoso. Folio: ${pedido.folio}`);
       cambiarVista('pedidos');
+    }
+
+    function checkFormValidity() {
+      const payButton = $('btn-pagar');
+      if (!payButton) return;
+
+      const paymentMethod = $('chk-metodo').value;
+      const clientName = $('chk-nombre').value.trim();
+      const clientEmail = $('chk-email').value.trim();
+      const clientAddress = $('chk-direccion').value.trim();
+      const legalAccepted = $('chk-legal').checked;
+
+      let cardValid = true;
+      if (paymentMethod === 'Tarjeta') {
+        const cardNumber = $('chk-num-tarjeta').value.replace(/\s/g, '');
+        const cardCvv = $('chk-cvv').value.trim();
+        cardValid = /^\d{13,16}$/.test(cardNumber) && /^\d{3,4}$/.test(cardCvv);
+      }
+
+      const isValid = Boolean(clientName && clientEmail && clientAddress && legalAccepted && cardValid);
+
+      payButton.disabled = !isValid;
+
+      if (!isValid) {
+        payButton.classList.remove('btn-blue');
+        payButton.classList.add('bg-slate-700', 'text-slate-400', 'opacity-50', 'cursor-not-allowed');
+      } else {
+        payButton.classList.remove('bg-slate-700', 'text-slate-400', 'opacity-50', 'cursor-not-allowed');
+        payButton.classList.add('btn-blue');
+      }
     }
 
     async function cancelarPedido(folio) {
@@ -2359,6 +2417,29 @@ function renderAddons() {
       }
     };
 
+    const POLITICAS_TEXTO = {
+      garantia: {
+        titulo: 'Póliza de Garantía Extendida (6 Meses)',
+        cuerpo: '<p>AEGIS Control garantiza todos los equipos y mano de obra de instalación por un periodo de 6 meses naturales a partir de la fecha de entrega o servicio.</p><p>La cobertura incluye reemplazo por defectos de fabricación y reparación por fallas técnicas derivadas del cableado estándar ISO. No cubre daños por descargas eléctricas externas, vandalismo o manipulación de terceros.</p>'
+      },
+      cancelacion: {
+        titulo: 'Política de Cancelación de Citas y Pedidos',
+        cuerpo: '<p>Las citas de instalación técnica programadas pueden cancelarse sin penalización con un mínimo de <strong>24 horas de anticipación</strong> a la fecha agendada.</p><p>Cancelaciones con menos de 24 horas no son procesadas por el sistema con el propósito de respetar la asignación operativa de los ingenieros técnicos.</p>'
+      },
+      privacidad: {
+        titulo: 'Aviso de Privacidad (Cumplimiento LFPDPPP)',
+        cuerpo: '<p>En apego a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares, los datos personales recabados (nombre, domicilio, teléfono y correo) serán utilizados estrictamente para la facturación, entrega de equipos físicos y agendamiento del personal de instalación.</p><p>Usted puede ejercer sus derechos ARCO enviando una solicitud a soporte@aegiscontrol.com.</p>'
+      }
+    };
+
+    function mostrarPolitica(tipo) {
+      const p = POLITICAS_TEXTO[tipo];
+      if (!p) return;
+      $('politica-titulo').textContent = p.titulo;
+      $('politica-contenido').innerHTML = p.cuerpo;
+      $('dlg-politicas').showModal();
+    }
+
     function vistaDesdeHash() {
       const m = location.hash.match(/^#\/(\w+)$/);
       return m && VISTAS.includes(m[1]) ? m[1] : 'catalogo';
@@ -2388,7 +2469,7 @@ function renderAddons() {
       const inicial = vistaDesdeHash();
       if (location.hash.startsWith('#/') && inicial !== 'catalogo') cambiarVista(inicial, { sinHistorial: true });
     });
-    
+
     let usuarioActivo = JSON.parse(localStorage.getItem('cctv_usuario') || 'null');
 
     function actualizarEstadoUsuario() {
@@ -2488,11 +2569,25 @@ function renderAddons() {
       usuarioActivo = null;
       localStorage.removeItem('cctv_usuario');
       actualizarEstadoUsuario();
-      mostrarToast('Sesion cerrada');
+      mostrarToast('Sesion cerrada.');
+      
+      // Si el usuario esta en Checkout, redirigir al catalogo
+      if (vistaActual === 'carrito') {
+        cambiarVista('catalogo');
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       actualizarEstadoUsuario();
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const checkoutForm = $('form-checkout');
+      if (checkoutForm) {
+        checkoutForm.addEventListener('input', checkFormValidity);
+        checkoutForm.addEventListener('change', checkFormValidity);
+      }
+      checkFormValidity();
     });
   </script>
 
@@ -2539,6 +2634,18 @@ function renderAddons() {
       </div>
       <button type="submit" class="btn btn-blue w-full mt-4">Crear cuenta</button>
     </form>
+  </dialog>
+
+  <!-- Modal de Politicas y Terminos Legales -->
+  <dialog id="dlg-politicas" class="card max-w-lg w-full p-6 shadow-2xl bg-white text-slate-800">
+    <div class="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
+      <h3 id="politica-titulo" class="text-base font-bold text-slate-900"></h3>
+      <button type="button" onclick="document.getElementById('dlg-politicas').close()" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+    <div id="politica-contenido" class="text-xs leading-relaxed text-slate-600 space-y-2 max-h-64 overflow-y-auto"></div>
+    <div class="mt-4 flex justify-end">
+      <button type="button" onclick="document.getElementById('dlg-politicas').close()" class="btn btn-ghost text-xs">Cerrar</button>
+    </div>
   </dialog>
 </body>
 </html>

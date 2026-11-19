@@ -1,5 +1,120 @@
 [
   {
+    "folio": "ORD-841865",
+    "cliente": "juan perez",
+    "email": "juanperez@ejemplo.com",
+    "direccion": "direccionFake",
+    "metodoPago": "MercadoPago",
+    "items": [
+      {
+        "id": "COT-730369",
+        "nombre": "Cotización CCTV Hogar (6 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 9250,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 9250,
+    "iva": 1480,
+    "total": 10730,
+    "fechaEntregaSistema": "sábado, 21 de noviembre de 2026",
+    "citaInstalacion": "2026-11-25T16:30:00",
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-19T00:39:25.728Z"
+  },
+  {
+    "folio": "ORD-705732",
+    "cliente": "Abarrotes Rosi",
+    "email": "abarrotesRosi@gmail.com",
+    "direccion": "abarrotes rosi cdmx",
+    "metodoPago": "MercadoPago",
+    "items": [
+      {
+        "id": "COT-228080",
+        "nombre": "Cotización CCTV Hogar (5 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 8200,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 8200,
+    "iva": 1312,
+    "total": 9512,
+    "fechaEntregaSistema": "sábado, 21 de noviembre de 2026",
+    "citaInstalacion": "2026-11-19T09:00:00",
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-19T00:32:23.701Z"
+  },
+  {
+    "folio": "ORD-212261",
+    "cliente": "juan perez",
+    "email": "juanperez@ejemplo.com",
+    "direccion": "direccionFake",
+    "metodoPago": "MercadoPago",
+    "items": [
+      {
+        "id": "PROD-06",
+        "nombre": "Disco Duro 2 TB Especial CCTV (WD Purple)",
+        "tipo": "producto",
+        "precio": 1550,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 1550,
+    "iva": 248,
+    "total": 1798,
+    "fechaEntregaSistema": "sábado, 21 de noviembre de 2026",
+    "citaInstalacion": null,
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-19T00:29:53.657Z"
+  },
+  {
+    "folio": "ORD-662263",
+    "cliente": "juan perez",
+    "email": "juanperez@ejemplo.com",
+    "direccion": "direccionFake",
+    "metodoPago": "Tarjeta",
+    "items": [
+      {
+        "id": "COT-885240",
+        "nombre": "Cotización CCTV Hogar (1 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 4050,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 4050,
+    "iva": 648,
+    "total": 4698,
+    "fechaEntregaSistema": "viernes, 20 de noviembre de 2026",
+    "citaInstalacion": "2026-12-02T16:30:00",
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-18T03:02:03.963Z"
+  },
+  {
+    "folio": "ORD-823144",
+    "cliente": "juan perez",
+    "email": "juanperez@ejemplo.com",
+    "direccion": "direccionFake",
+    "metodoPago": "Tarjeta",
+    "items": [
+      {
+        "id": "COT-719413",
+        "nombre": "Cotización CCTV Hogar (4 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 6550,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 6550,
+    "iva": 1048,
+    "total": 7598,
+    "fechaEntregaSistema": "viernes, 20 de noviembre de 2026",
+    "citaInstalacion": "2026-11-25T13:00:00",
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-18T02:42:33.463Z"
+  },
+  {
     "folio": "ORD-357258",
     "cliente": "Abarrotes Rosi",
     "email": "abarrotesRosi@gmail.com",

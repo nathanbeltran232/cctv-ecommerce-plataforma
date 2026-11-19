@@ -1,14 +1,34 @@
 [
   {
-    "id": "cam-bala-1080p",
+    "id": "PROD-01",
+    "modelo": "AEG-DOMO-360",
+    "nombre": "Cámara Domo IP WiFi 2K Audio Bidireccional",
+    "descripcion": "Detección inteligente de movimiento, visión 360° motorizada y monitoreo directo en app móvil.",
+    "categoria": "producto",
+    "tipo": "producto",
+    "precio": 1250.00
+  },
+  {
+    "id": "PROD-02",
+    "modelo": "AEG-NVR8-1TB",
+    "nombre": "Grabador NVR 8 Canales + Disco Duro 1 TB WD Purple",
+    "descripcion": "Almacenamiento continuo 24/7 con cifrado diseñado para videovigilancia de alto desempeño.",
+    "categoria": "producto",
+    "tipo": "producto",
+    "precio": 2950.00
+  },
+  {
+    "id": "PROD-03",
+    "modelo": "AEG-BALA-1080",
     "nombre": "Cámara Tipo Bala Exterior 1080p",
-    "descripcion": "Resistente a lluvia e intemperie (IP67), visión nocturna 20m.",
+    "descripcion": "Resistente a lluvia e intemperie (IP67), visión nocturna 20 m.",
     "categoria": "producto",
     "tipo": "producto",
     "precio": 599.00
   },
   {
-    "id": "cam-domo-1080p",
+    "id": "PROD-04",
+    "modelo": "AEG-DOMO-INT",
     "nombre": "Cámara Tipo Domo Interior 1080p",
     "descripcion": "Diseño discreto para techos en interiores, lente gran angular.",
     "categoria": "producto",
@@ -16,7 +36,8 @@
     "precio": 549.00
   },
   {
-    "id": "dvr-4ch",
+    "id": "PROD-05",
+    "modelo": "AEG-DVR-4CH",
     "nombre": "Grabador DVR 4 Canales Pentahíbrido",
     "descripcion": "Soporta hasta 4 cámaras y conexión a app móvil.",
     "categoria": "producto",
@@ -24,33 +45,19 @@
     "precio": 1250.00
   },
   {
-    "id": "dvr-8ch",
-    "nombre": "Grabador DVR 8 Canales Pentahíbrido",
-    "descripcion": "Soporta hasta 8 cámaras, salida HDMI y VGA.",
-    "categoria": "producto",
-    "tipo": "producto",
-    "precio": 1650.00
-  },
-  {
-    "id": "disco-1tb",
-    "nombre": "Disco Duro 1TB Especial CCTV (Western Digital Purple)",
-    "descripcion": "Grabación continua 24/7 sin sobrecalentamiento.",
-    "categoria": "producto",
-    "tipo": "producto",
-    "precio": 1100.00
-  },
-  {
-    "id": "disco-2tb",
-    "nombre": "Disco Duro 2TB Especial CCTV (Western Digital Purple)",
-    "descripcion": "Mayor capacidad de historial de video (hasta 30 días con 4 cámaras).",
+    "id": "PROD-06",
+    "modelo": "AEG-HDD-2TB",
+    "nombre": "Disco Duro 2 TB Especial CCTV (WD Purple)",
+    "descripcion": "Mayor capacidad de historial de video continuo para sistemas de 4 a 8 cámaras.",
     "categoria": "producto",
     "tipo": "producto",
     "precio": 1550.00
   },
   {
-    "id": "bobina-cable-100m",
+    "id": "PROD-07",
+    "modelo": "AEG-UTP-100M",
     "nombre": "Bobina Cable UTP Cat5e 100 Metros",
-    "descripcion": "Cable de red de alta calidad para transmisión de video y energía.",
+    "descripcion": "Cable de red de alta calidad para transmisión de video y energía sin interferencias.",
     "categoria": "producto",
     "tipo": "producto",
     "precio": 480.00

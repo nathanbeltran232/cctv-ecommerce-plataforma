@@ -1,23 +1,32 @@
 [
   {
-    "id": "serv-instalacion-camara",
-    "nombre": "Instalación y cableado profesional por cámara",
-    "descripcion": "Fijación, perforación, tendido de cable estético bajo normas y conexión al DVR.",
-    "precio": 450.00,
+    "id": "SERV-01",
+    "modelo": "SRV-ISO-04",
+    "nombre": "Servicio de Instalación Profesional (1 a 4 Cámaras)",
+    "descripcion": "Montaje estético con canaleta/tubería bajo norma ISO, configuración móvil y capacitación.",
+    "categoria": "servicio",
+    "tipo": "servicio",
+    "precio": 1600.00,
+    "duracionHoras": 2.5
+  },
+  {
+    "id": "SERV-02",
+    "modelo": "SRV-MNT-PRO",
+    "nombre": "Mantenimiento Preventivo y Diagnóstico CCTV",
+    "descripcion": "Limpieza óptica, ajuste de conectores BNC/RJ45, revisión de voltajes y respaldo de grabaciones.",
+    "categoria": "servicio",
+    "tipo": "servicio",
+    "precio": 850.00,
     "duracionHoras": 1.5
   },
   {
-    "id": "serv-configuracion-red",
+    "id": "SERV-03",
+    "modelo": "SRV-CFG-APP",
     "nombre": "Configuración en red y app móvil",
     "descripcion": "Apertura de puertos, enlace con la nube y configuración de la app en hasta 3 celulares.",
+    "categoria": "servicio",
+    "tipo": "servicio",
     "precio": 350.00,
     "duracionHoras": 1.0
-  },
-  {
-    "id": "serv-mantenimiento-preventivo",
-    "nombre": "Mantenimiento preventivo general",
-    "descripcion": "Limpieza de lentes, ajuste de enfoque, revisión de fuentes de poder y estado del disco.",
-    "precio": 600.00,
-    "duracionHoras": 2.0
   }
 ]
