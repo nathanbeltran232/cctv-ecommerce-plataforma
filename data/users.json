@@ -14,5 +14,21 @@
     "password": "1234",
     "address": "neza",
     "createdAt": "2026-11-21T21:49:03.424Z"
+  },
+  {
+    "id": "USR-mwu4v2yg",
+    "name": "pedro",
+    "email": "pedro@correo.com",
+    "password": "c5182347994d5919a3d8de3cf48179d0:4b00a38b4769b2a26f7c98e469de032e2f86ec22089888b795c1e86bb9f3abcd508e98a4b78cfb82b39126a5378d9b25f4c8c96171ba009700b6e967819114df",
+    "address": "2d3873314c403902d4db9fe38294018f:03bdfb196d4239fc5682f548db5d4d0e",
+    "createdAt": "2026-11-24T03:26:38.842Z"
+  },
+  {
+    "id": "USR-mwu4wjfw",
+    "name": "armando",
+    "email": "armando@correo.com",
+    "password": "d6fb970481ed8434f6b01233c2286aa7:90d9733d3773124d207cc56736a3f34dd638611c62884c521ac990a5e759e259e9ca8d7448ee3593ab9115e88791cdd84ec6df8227e2fef31c06ffaf34e56410",
+    "address": "2ed3902343940f075427d47d39d6144c:ebd57f28d778c3bc86809eafb6e87c14",
+    "createdAt": "2026-11-24T03:27:46.861Z"
   }
 ]

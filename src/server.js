@@ -5,7 +5,7 @@ const cors = require('cors');
 const catalogRoutes = require('./routes/catalog');
 const quotationRoutes = require('./routes/quotation');
 const authRoutes = require('./routes/auth');
-const { processOrder, cancelOrder, requestReturn, getBookedAppointments } = require('./controllers/orderController');
+const { processOrder, cancelOrder, requestReturn, getBookedAppointments, getOrders } = require('./controllers/orderController');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +26,7 @@ app.post(['/api/pedidos', '/api/v1/pedidos'], processOrder);
 app.patch('/api/pedidos/:folio/cancelar', cancelOrder);
 app.patch('/api/pedidos/:folio/devolucion', requestReturn);
 app.get('/api/calendario', getBookedAppointments);
+app.get('/api/pedidos', getOrders);
 
 
 app.listen(PORT, () => {

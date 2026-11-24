@@ -1,5 +1,37 @@
 [
   {
+    "folio": "ORD-206514",
+    "userId": "USR-mwu4v2yg",
+    "cliente": "pedro",
+    "email": "pedro@correo.com",
+    "direccion": "dirección 1",
+    "metodoPago": "MercadoPago",
+    "items": [
+      {
+        "id": "COT-808317",
+        "nombre": "Cotización CCTV Hogar (4 cámaras + instalación ISO)",
+        "tipo": "ambos",
+        "precio": 6550,
+        "cantidad": 1
+      },
+      {
+        "id": "ADD-HDD",
+        "nombre": "Almacenamiento extra: disco 1 TB",
+        "tipo": "producto",
+        "precio": 1100,
+        "cantidad": 1
+      }
+    ],
+    "subtotal": 7650,
+    "iva": 1224,
+    "total": 8874,
+    "fechaEntregaSistema": "jueves, 26 de noviembre de 2026",
+    "citaInstalacion": "2026-11-24T09:00:00",
+    "citaEntrega": null,
+    "estatus": "Confirmado y pagado",
+    "creadoEn": "2026-11-24T03:27:03.956Z"
+  },
+  {
     "folio": "ORD-841865",
     "cliente": "juan perez",
     "email": "juanperez@ejemplo.com",

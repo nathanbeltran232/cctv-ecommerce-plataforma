@@ -1592,6 +1592,7 @@
       const { subtotal, iva, total } = totalesDe(state.carrito);
       const pedido = {
         folio: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+        userId: usuarioActivo ? usuarioActivo.id : null,
         cliente: $('chk-nombre').value.trim(),
         email: $('chk-email').value.trim(),
         direccion: $('chk-direccion').value.trim(),
@@ -1721,12 +1722,29 @@
 
     function renderPedidos() {
       const cont = $('lista-pedidos');
-      if (state.pedidos.length === 0) {
-        cont.innerHTML = `<div class="card p-10 text-center text-sm text-slate-400">Aún no tienes pedidos registrados.</div>`;
+      if (!cont) return;
+
+      if (!usuarioActivo) {
+        cont.innerHTML = `
+          <div class="card p-10 text-center space-y-3">
+            <p class="text-sm text-slate-400">Inicia sesión con tu cuenta para consultar y gestionar tus órdenes.</p>
+            <button type="button" onclick="abrirModalAuth()" class="btn btn-blue text-xs">Iniciar sesión</button>
+          </div>`;
         return;
       }
 
-      cont.innerHTML = state.pedidos.map((p) => {
+      const pedidosUsuario = state.pedidos.filter((p) => {
+        const coincideId = p.userId && p.userId === usuarioActivo.id;
+        const coincideEmail = p.email && p.email.toLowerCase() === usuarioActivo.email.toLowerCase();
+        return coincideId || coincideEmail;
+      });
+
+      if (pedidosUsuario.length === 0) {
+        cont.innerHTML = `<div class="card p-10 text-center text-sm text-slate-400">No tienes pedidos registrados con esta cuenta (${escapeHtml(usuarioActivo.email)}).</div>`;
+        return;
+      }
+
+      cont.innerHTML = pedidosUsuario.map((p) => {
         const folio = escapeHtml(p.folio);
         const cerrado = p.estatus.startsWith('Cancelado') || p.estatus.startsWith('Devolución');
         const chipEstatus = cerrado ? 'bg-slate-100 text-slate-700' : 'bg-blue-50 text-blue-700';
@@ -1750,9 +1768,9 @@
           <div class="flex flex-wrap gap-2 pt-1">
             ${cerrado 
               ? `<button disabled class="btn btn-danger opacity-50 cursor-not-allowed">Cancelar pedido / cita (≥ 24 hrs)</button>
-                 <button disabled class="btn btn-ghost opacity-50 cursor-not-allowed">Solicitar devolución (garantía 6 meses)</button>`
+                <button disabled class="btn btn-ghost opacity-50 cursor-not-allowed">Solicitar devolución (garantía 6 meses)</button>`
               : `<button onclick="cancelarPedido('${folio}')" data-testid="cancel-btn-${folio}" class="btn btn-danger">Cancelar pedido / cita (≥ 24 hrs)</button>
-                 <button onclick="solicitarDevolucion('${folio}')" data-testid="return-btn-${folio}" class="btn btn-ghost">Solicitar devolución (garantía 6 meses)</button>`
+                <button onclick="solicitarDevolucion('${folio}')" data-testid="return-btn-${folio}" class="btn btn-ghost">Solicitar devolución (garantía 6 meses)</button>`
             }
           </div>
         </article>`;
@@ -2683,6 +2701,7 @@ function renderAddons() {
         localStorage.setItem('cctv_usuario', JSON.stringify(usuarioActivo));
         $('dlg-auth').close();
         actualizarEstadoUsuario();
+        cargarPedidosUsuario();
         mostrarToast('Cuenta creada e iniciada con exito');
       } catch (_) {
         mostrarToast('Error de comunicacion con el servidor');
@@ -2711,26 +2730,59 @@ function renderAddons() {
         localStorage.setItem('cctv_usuario', JSON.stringify(usuarioActivo));
         $('dlg-auth').close();
         actualizarEstadoUsuario();
+        cargarPedidosUsuario();
         mostrarToast(`Bienvenido de vuelta, ${usuarioActivo.name}`);
       } catch (_) {
         mostrarToast('Error de comunicacion con el servidor');
       }
     }
 
+    async function cargarPedidosUsuario() {
+      if (!usuarioActivo) {
+        state.pedidos = [];
+        renderPedidos();
+        return;
+      }
+
+      try {
+        const query = `?userId=${encodeURIComponent(usuarioActivo.id)}&email=${encodeURIComponent(usuarioActivo.email)}`;
+        const res = await fetch(`/api/pedidos${query}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            state.pedidos = data;
+            escribirStorage('cctv_pedidos', state.pedidos);
+            renderPedidos();
+          }
+        }
+      } catch (_) {}
+    }
+
     function cerrarSesion() {
       usuarioActivo = null;
       localStorage.removeItem('cctv_usuario');
-      actualizarEstadoUsuario();
-      mostrarToast('Sesion cerrada.');
       
-      // Si el usuario esta en Checkout, redirigir al catalogo
-      if (vistaActual === 'carrito') {
+      // Limpieza del carrito para evitar fuga entre sesiones
+      state.carrito = [];
+      guardarCarrito();
+      actualizarVistaCarrito();
+
+      // Limpieza de pedidos en memoria local
+      state.pedidos = [];
+      localStorage.removeItem('cctv_pedidos');
+
+      actualizarEstadoUsuario();
+      renderPedidos();
+      mostrarToast('Sesion cerrada.');
+
+      if (vistaActual === 'carrito' || vistaActual === 'pedidos') {
         cambiarVista('catalogo');
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       actualizarEstadoUsuario();
+      cargarPedidosUsuario();
     });
 
     window.addEventListener('DOMContentLoaded', () => {

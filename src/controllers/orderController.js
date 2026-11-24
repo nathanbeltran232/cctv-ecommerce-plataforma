@@ -70,5 +70,22 @@ const getBookedAppointments = (req, res) => {
     const calendar = readData('calendario.json');
     return res.status(200).json(calendar);
 };
-module.exports = { processOrder, cancelOrder, requestReturn, getBookedAppointments };
+
+const getOrders = (req, res) => {
+    const orders = readData('pedidos.json');
+    const { userId, email } = req.query;
+
+    if (!userId && !email) {
+        return res.status(200).json(orders);
+    }
+
+    const userOrders = orders.filter(order => {
+        const matchesId = userId && order.userId === userId;
+        const matchesEmail = email && order.email && order.email.toLowerCase() === email.toLowerCase();
+        return matchesId || matchesEmail;
+    });
+
+    return res.status(200).json(userOrders);
+};
+module.exports = { processOrder, cancelOrder, requestReturn, getBookedAppointments, getOrders };
 
