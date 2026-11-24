@@ -2661,6 +2661,7 @@ function renderAddons() {
       if (d.evento === 'ok' && d.user) {
         usuarioActivo = d.user;             // login.html ya guardó cctv_usuario
         actualizarEstadoUsuario();          // header "Hola, ..." + datos del checkout, sin recargar
+        cargarPedidosUsuario();
         cerrarAuth();
         mostrarToast(d.mensaje || 'Sesión iniciada');
       }
@@ -2746,7 +2747,7 @@ function renderAddons() {
 
       try {
         const query = `?userId=${encodeURIComponent(usuarioActivo.id)}&email=${encodeURIComponent(usuarioActivo.email)}`;
-        const res = await fetch(`/api/pedidos${query}`);
+        const res = await fetch(`/api/pedidos${query}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
