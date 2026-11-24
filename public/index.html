@@ -379,6 +379,14 @@
       .filtro-btn { @apply whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-200 ease-spring active:scale-[0.96]; }
       .choice { @apply flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition-[transform,background-color,border-color] duration-200 ease-spring hover:border-slate-300 active:scale-[0.985] has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/50 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-600 has-[:focus-visible]:ring-offset-2; }
     }
+    /* ---- Capa de acceso (login dentro del sistema, sin cambiar de página) ---- */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 80; background: rgba(6, 8, 11, 0.66);
+      opacity: 0; visibility: hidden;
+      transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 260ms;
+    }
+    #auth-overlay[data-open="true"] { opacity: 1; visibility: visible; transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+    #auth-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
   </style>
 </head>
 
@@ -799,18 +807,18 @@
               <div class="flex items-start gap-4">
                 <svg class="mt-0.5 h-6 w-6 shrink-0 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <div>
-                  <h4 class="text-sm font-bold text-slate-900">Agenda tu cita de instalación</h4>
-                  <p class="text-xs text-slate-600">Selecciona fecha y horario para recibir a nuestros técnicos. Los horarios ocupados se bloquean automáticamente.</p>
+                  <h4 id="agenda-titulo" class="text-sm font-bold text-slate-900">Agenda tu cita de instalación</h4>
+                  <p id="agenda-desc" class="text-xs text-slate-600">Selecciona fecha y horario para recibir a nuestros técnicos. Los horarios ocupados se bloquean automáticamente.</p>
                 </div>
               </div>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label for="input-fecha-instalacion" class="label">Fecha de instalación</label>
+                  <label id="label-fecha-agenda" for="input-fecha-instalacion" class="label">Fecha de instalación</label>
                   <input type="date" id="input-fecha-instalacion" data-testid="install-date-input" onchange="validarDisponibilidadHorario()" class="field" />
                 </div>
                 <div>
-                  <label for="input-hora-instalacion" class="label">Bloque de horario</label>
-                  <select id="input-hora-instalacion" data-testid="install-time-select" class="field">
+                  <label id="label-hora-agenda" for="input-hora-instalacion" class="label">Bloque de horario</label>
+                  <select id="input-hora-instalacion" data-testid="install-time-select" onchange="sincronizarEntrega()" class="field">
                     <option value="09:00" data-label="09:00 – 12:00 hrs · Matutino">09:00 – 12:00 hrs · Matutino</option>
                     <option value="13:00" data-label="13:00 – 16:00 hrs · Vespertino">13:00 – 16:00 hrs · Vespertino</option>
                     <option value="16:30" data-label="16:30 – 19:30 hrs · Tarde">16:30 – 19:30 hrs · Tarde</option>
@@ -1057,7 +1065,7 @@
 
     const $ = (id) => document.getElementById(id);
     const formatoMXN = (n) => '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const aFechaLocalISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const leerStorage = (clave) => { try { return JSON.parse(localStorage.getItem(clave) || '[]'); } catch (_) { return []; } };
     const escribirStorage = (clave, valor) => { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (_) {} };
@@ -1092,24 +1100,50 @@
       renderCatalogo();
     });
 
+    const ALIAS_CATEGORIA = { paquete: 'paquete', paquetes: 'paquete', servicio: 'servicio', servicios: 'servicio', producto: 'producto', productos: 'producto', equipo: 'producto', equipos: 'producto' };
+    const ENDPOINTS_CATALOGO = ['/api/productos', '/api/paquetes', '/api/servicios'];   // ajusta si tus rutas son otras
+
+    function normalizarItem(raw) {
+      const id = String(raw.id ?? raw.sku ?? raw.codigo ?? '').trim();
+      if (!id) return null;
+      const idU = id.toUpperCase();
+      const base = CATALOGO_BASE.find((b) => b.id.toUpperCase() === idU) || {};
+      const categoria = ALIAS_CATEGORIA[String(raw.categoria ?? raw.category ?? '').toLowerCase()] || base.categoria
+        || (idU.startsWith('PAQ') ? 'paquete' : idU.startsWith('SERV') ? 'servicio' : 'producto');
+      const precio = Number(raw.precio ?? raw.price ?? base.precio ?? 0);
+      return {
+        ...base, ...raw, id, categoria,
+        tipo: raw.tipo || base.tipo || (categoria === 'servicio' ? 'servicio' : 'producto'),
+        precio: Number.isFinite(precio) ? precio : 0,
+        nombre: raw.nombre || raw.name || base.nombre || id,
+        modelo: raw.modelo || base.modelo || id,
+        descripcion: raw.descripcion || raw.description || base.descripcion || '',
+        incluye: Array.isArray(raw.incluye) ? raw.incluye : (base.incluye || []),
+        imagen: raw.imagen || base.imagen || IMAGENES_POR_ID[id] || IMAGENES_POR_ID[idU] || IMAGENES_POR_ID['PAQ-01']
+      };
+    }
+
     async function sincronizarConBackend() {
       try {
-        const resProd = await fetch('/api/productos');
-        if (resProd.ok) {
-          const data = await resProd.json();
-          if (Array.isArray(data) && data.length > 0) {
-            state.catalogo = data.map((item) => ({
-              ...item,
-              imagen: item.imagen || IMAGENES_POR_ID[item.id] || IMAGENES_POR_ID['PAQ-01']
-            }));
-          }
+        const respuestas = await Promise.allSettled(ENDPOINTS_CATALOGO.map((u) => fetch(u).then((r) => (r.ok ? r.json() : []))));
+        const crudos = [];
+        respuestas.forEach((r) => {
+          if (r.status !== 'fulfilled') return;
+          const d = r.value;
+          if (Array.isArray(d)) crudos.push(...d);
+          else if (d && typeof d === 'object') Object.values(d).forEach((v) => { if (Array.isArray(v)) crudos.push(...v); }); // {paquetes:[..]}
+        });
+        const vistos = new Set();
+        const items = crudos.map(normalizarItem).filter((x) => x && !vistos.has(x.id) && vistos.add(x.id));
+        if (items.length) {
+          // si el servidor no trajo paquetes o servicios, se completan con los base para que el catálogo nunca quede incompleto
+          ['paquete', 'servicio'].forEach((cat) => {
+            if (!items.some((i) => i.categoria === cat)) items.push(...CATALOGO_BASE.filter((b) => b.categoria === cat));
+          });
+          state.catalogo = items;
         }
-
         const resCal = await fetch('/api/calendario');
-        if (resCal.ok) {
-          const calendarData = await resCal.json();
-          state.citasOcupadas = calendarData;
-        }
+        if (resCal.ok) { const c = await resCal.json(); if (Array.isArray(c)) state.citasOcupadas = c; }
       } catch (_) {}
     }
 
@@ -1262,7 +1296,7 @@
       const q = $('input-busqueda').value.toLowerCase().trim();
       const filtrados = state.catalogo.filter((item) => {
         const coincideCat = state.categoriaActual === 'todos' || item.categoria === state.categoriaActual;
-        const coincideTexto = item.nombre.toLowerCase().includes(q) || item.descripcion.toLowerCase().includes(q);
+        const coincideTexto = (item.nombre || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
         return coincideCat && coincideTexto;
       });
 
@@ -1417,26 +1451,56 @@
       input.value = iso;
     }
 
+    const fechaLarga = (d) => d.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const hayServicio = () => state.carrito.some((i) => i.tipo === 'servicio' || i.tipo === 'ambos');
+
+    function ajustarAgenda() {
+      const sv = hayServicio();
+      const min = new Date(); min.setDate(min.getDate() + (sv ? 1 : 3));
+      const iso = aFechaLocalISO(min), inp = $('input-fecha-instalacion');
+      inp.min = iso;
+      if (!inp.value || inp.value < iso) inp.value = iso;
+      $('agenda-titulo').textContent = sv ? 'Agenda tu cita de instalación' : 'Programa la entrega de tus equipos';
+      $('agenda-desc').textContent = sv
+        ? 'Selecciona fecha y horario para recibir a nuestros técnicos. Los horarios ocupados se bloquean automáticamente.'
+        : 'Elige el día y horario en que quieres recibir tus equipos. Puedes reprogramarla con al menos 24 horas de anticipación.';
+      $('label-fecha-agenda').textContent = sv ? 'Fecha de instalación' : 'Fecha de entrega';
+      $('label-hora-agenda').textContent = sv ? 'Bloque de horario' : 'Horario de entrega';
+    }
+
+    function sincronizarEntrega() {
+      const f = $('input-fecha-instalacion').value;
+      if (hayServicio() || !f) {                       // con servicio, la entrega queda en la fecha propuesta (+3 días)
+        const d = new Date(); d.setDate(d.getDate() + 3);
+        $('fecha-entrega-sistema').textContent = fechaLarga(d);
+        return;
+      }
+      const lbl = $('input-hora-instalacion').selectedOptions[0]?.dataset.label || '';
+      $('fecha-entrega-sistema').textContent = `${fechaLarga(new Date(f + 'T00:00:00'))} · ${lbl}`;
+    }
+
     function validarDisponibilidadHorario() {
       const fecha = $('input-fecha-instalacion').value;
       const select = $('input-hora-instalacion');
       const msg = $('msg-disponibilidad');
       if (!fecha) { msg.textContent = ''; return; }
+      const sv = hayServicio();
+      const ocupadas = sv ? state.citasOcupadas : [];   // las entregas no usan la agenda de técnicos
 
       let primeraLibre = null;
       Array.from(select.options).forEach((opt) => {
-        const ocupado = state.citasOcupadas.includes(`${fecha}_${opt.value}`);
+        const ocupado = ocupadas.includes(`${fecha}_${opt.value}`);
         opt.disabled = ocupado;
         opt.textContent = ocupado ? `${opt.dataset.label} — Ocupado` : opt.dataset.label;
         if (!ocupado && !primeraLibre) primeraLibre = opt;
       });
-
       if (select.selectedOptions[0]?.disabled) select.value = primeraLibre ? primeraLibre.value : '';
 
       msg.className = `text-xs font-medium ${primeraLibre ? 'text-blue-700' : 'text-red-600'}`;
       msg.textContent = primeraLibre
-        ? `Horarios verificados sin traslapes para el ${fecha}.`
+        ? (sv ? `Horarios verificados sin traslapes para el ${fecha}.` : `Entrega programada para el ${fecha}.`)
         : 'Sin disponibilidad ese día. Elige otra fecha.';
+      sincronizarEntrega();
     }
 
     function actualizarVistaCarrito() {
@@ -1447,7 +1511,8 @@
       const incluyeProducto = state.carrito.some((i) => i.tipo === 'producto' || i.tipo === 'ambos');
 
       $('bloque-entrega-producto').classList.toggle('hidden', !incluyeProducto && state.carrito.length > 0);
-      $('bloque-agenda-servicio').classList.toggle('hidden', !requiereServicio);
+      $('bloque-agenda-servicio').classList.toggle('hidden', state.carrito.length === 0);
+      if (state.carrito.length) ajustarAgenda();
 
       if (state.carrito.length === 0) {
         contenedor.innerHTML = `
@@ -1522,7 +1587,7 @@
       const requiereServicio = state.carrito.some((i) => i.tipo === 'servicio' || i.tipo === 'ambos');
       const fechaInstalacion = $('input-fecha-instalacion').value;
       const horaInstalacion = $('input-hora-instalacion').value;
-      if (requiereServicio && (!fechaInstalacion || !horaInstalacion)) { mostrarToast('Selecciona fecha y horario disponibles para tu instalación.'); return; }
+      if (!fechaInstalacion || !horaInstalacion) { mostrarToast(requiereServicio ? 'Selecciona fecha y horario disponibles para tu instalación.' : 'Selecciona fecha y horario para tu entrega.'); return; }
 
       const { subtotal, iva, total } = totalesDe(state.carrito);
       const pedido = {
@@ -1535,6 +1600,7 @@
         subtotal, iva, total,
         fechaEntregaSistema: $('fecha-entrega-sistema').textContent,
         citaInstalacion: requiereServicio ? `${fechaInstalacion}T${horaInstalacion}:00` : null,
+        citaEntrega: requiereServicio ? null : `${fechaInstalacion}T${horaInstalacion}:00`,
         estatus: 'Confirmado y pagado',
         creadoEn: new Date().toISOString()
       };
@@ -1699,7 +1765,7 @@
     state.modelosComparados = ['PAQ-01', 'PAQ-02', 'PROD-01'];
 
     function enriquecerItem(item) {
-      const base = CATALOGO_BASE.find((b) => b.id === item.id) || CATALOGO_BASE[0];
+      const base = CATALOGO_BASE.find((b) => b.id === item.id) || {};
       return { ...base, ...item };
     }
 
@@ -1866,6 +1932,42 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
       'SERV-02': { glifo: 'servicio', camaras: null, mp: null, noche: null, ip: null, ik: null, cap: null }
     };
 
+    GLIFOS.bala = '<rect x="8" y="22" width="36" height="16" rx="6"/><circle cx="19" cy="30" r="4"/><path d="M44 26h10v8H44M26 38v8M18 46h16"/>';
+    GLIFOS.dvr = GLIFOS.nvr;
+    GLIFOS.disco = '<rect x="8" y="16" width="48" height="32" rx="6"/><circle cx="26" cy="32" r="9"/><circle cx="26" cy="32" r="2"/><path d="M42 24h8M42 32h8M42 40h8"/>';
+
+    function inferirSpecs(it) {
+      const t = [it.nombre, it.descripcion, it.resolucion, it.visionNocturna, it.proteccion, it.almacenamiento, (it.incluye || []).join(' ')].join(' ').toLowerCase();
+      const num = (re) => { const m = t.match(re); return m ? parseFloat(m[1]) : null; };
+      const nombreL = String(it.nombre || '').toLowerCase();
+      const disco = /disco|hdd|ssd|micro\s?sd|memoria/.test(nombreL) && it.categoria !== 'paquete';
+      const grabador = !disco && /\b(dvr|nvr|grabador)\b/.test(t) && it.categoria !== 'paquete';
+      let mp = num(/(\d+(?:\.\d+)?)\s*mp\b/);
+      if (!mp) mp = /\b4k\b/.test(t) ? 8 : /\b2k\b|qhd/.test(t) ? 4 : /1080/.test(t) ? 2 : null;
+      const tb = num(/(\d+(?:\.\d+)?)\s*tb\b/), gb = num(/(\d+(?:\.\d+)?)\s*gb\b/);
+      const cap = tb || (gb ? gb / 1000 : null);
+      const tn = nombreL + ' ' + (it.incluye || []).join(' ').toLowerCase();
+      const ncam = (m => (m ? parseFloat(m[1]) : null))(tn.match(/(\d+)\s*[×x]?\s*c[aá]maras?/));
+      const camaras = it.categoria === 'servicio' || grabador || disco ? null : (ncam || (/c[aá]mara|domo|bala/.test(t) ? 1 : null));
+      const glifo = it.categoria === 'servicio' ? 'servicio'
+        : it.categoria === 'paquete' ? 'kit'
+        : disco ? 'disco'
+    : grabador ? 'dvr'
+        : /domo|ptz/.test(t) ? 'domo'
+        : /bala|bullet/.test(t) ? 'bala' : 'kit';
+      const ip = (t.match(/ip\s?(\d{2})/) || [])[1];
+      const ik = (t.match(/ik\s?(\d{2})/) || [])[1];
+      return {
+        glifo, camaras, mp: mp || null, mpTxt: mp ? `${mp} MP` : null,
+        noche: num(/(\d+)\s*m\b/), color: /color|colorvu/.test(t),
+        ip: ip ? 'IP' + ip : null, ik: ik ? Number(ik) : null,
+        cap: cap || null, capTxt: tb ? `${tb} TB` : gb ? `${gb} GB` : null,
+        audio: /audio/.test(t), ptz: /ptz|360|motorizad/.test(t), wifi: /wi-?fi/.test(t),
+        app: /\bapp\b|móvil|movil/.test(t), instalacion: /instalaci[oó]n/.test(t)
+      };
+    }
+    const specsDe = (it) => SPECS[it.id] || inferirSpecs(it);
+
     const pctBarra = (v, max) => Math.max(4, Math.min(100, (v / max) * 100));
     const celdaBarra = (valor, max, etiqueta, sub) => `
       <div class="mx-auto w-full max-w-[12rem]">
@@ -1937,7 +2039,7 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
       const nCols = window.matchMedia('(max-width: 767px)').matches ? 2 : 3;
       const items = state.modelosComparados.slice(0, nCols).map((idSel) => enriquecerItem(state.catalogo.find((p) => p.id === idSel) || state.catalogo[0]));
       const gridCols = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' }[items.length] || 'grid-cols-3';
-      const specs = items.map((it) => SPECS[it.id] || {});
+      const specs = items.map(specsDe);
 
       const cabecera = items.map((item, colIdx) => {
         const idEsc = escapeHtml(item.id);
@@ -2495,9 +2597,59 @@ function renderAddons() {
       }
     }
 
-    function abrirModalAuth() {
-      $('dlg-auth').showModal();
+    // ===== Acceso dentro del sistema: login.html se abre como capa sobre el catálogo =====
+    const RUTA_LOGIN = 'login.html';
+    let authCargado = false, authAbierto = false, authDisparador = null;
+
+    function precargarAuth() {              // se llama al acercarse al botón, para que abra al instante
+      if (authCargado) return;
+      authCargado = true;
+      const f = $('auth-frame');
+      f.addEventListener('load', () => { f.dataset.cargado = '1'; });
+      f.src = RUTA_LOGIN + '?embed=1';
     }
+
+    function abrirModalAuth(modo) {         // abrirModalAuth() = iniciar sesión · abrirModalAuth('register') = crear cuenta
+      precargarAuth();
+      authDisparador = document.activeElement;
+      authAbierto = true;
+      const o = $('auth-overlay'), f = $('auth-frame');
+      o.dataset.open = 'true';
+      o.setAttribute('aria-hidden', 'false');
+      document.documentElement.style.overflow = 'hidden';
+      const avisar = () => {
+        f.focus();
+        f.contentWindow.postMessage({ tipo: 'aegis-abrir', modo: modo === 'register' ? 'register' : 'login' }, location.origin);
+      };
+      if (f.dataset.cargado === '1') avisar(); else f.addEventListener('load', avisar, { once: true });
+    }
+
+    function cerrarAuth() {
+      if (!authAbierto) return;
+      authAbierto = false;
+      const o = $('auth-overlay');
+      o.dataset.open = 'false';
+      o.setAttribute('aria-hidden', 'true');
+      document.documentElement.style.overflow = '';
+      window.focus();
+      if (authDisparador && authDisparador.isConnected) authDisparador.focus({ preventScroll: true });
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== location.origin || ev.source !== $('auth-frame').contentWindow) return;
+      const d = ev.data || {};
+      if (d.tipo !== 'aegis-auth') return;
+      if (d.evento === 'cerrar') cerrarAuth();
+      if (d.evento === 'ok' && d.user) {
+        usuarioActivo = d.user;             // login.html ya guardó cctv_usuario
+        actualizarEstadoUsuario();          // header "Hola, ..." + datos del checkout, sin recargar
+        cerrarAuth();
+        mostrarToast(d.mensaje || 'Sesión iniciada');
+      }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && authAbierto) cerrarAuth(); });
+    ['pointerover', 'touchstart', 'focusin'].forEach((tipo) =>
+      document.addEventListener(tipo, (e) => { if (e.target.closest && e.target.closest('#btn-login-modal')) precargarAuth(); }, { passive: true }));
 
     function cambiarTabAuth(tab) {
       const esLogin = tab === 'login';
@@ -2647,5 +2799,9 @@ function renderAddons() {
       <button type="button" onclick="document.getElementById('dlg-politicas').close()" class="btn btn-ghost text-xs">Cerrar</button>
     </div>
   </dialog>
+  <!-- Capa de acceso: carga login.html dentro del sistema -->
+  <div id="auth-overlay" role="dialog" aria-modal="true" aria-label="Acceso a AEGIS Control" aria-hidden="true" data-open="false">
+    <iframe id="auth-frame" title="Acceso a AEGIS Control" tabindex="-1"></iframe>
+  </div>
 </body>
 </html>

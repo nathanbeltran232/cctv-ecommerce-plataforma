@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Acceso | AEGIS Control</title>
+
+  <!-- Tema: se aplica antes de pintar para no parpadear (misma lógica que index.html) -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('aegis_tema');
+        var oscuro = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (oscuro) document.documentElement.classList.add('dark');
+      } catch (e) {}
+      // Modo embebido: index.html lo abre dentro de un iframe como capa sobre el catálogo
+      try { if (new URLSearchParams(location.search).get('embed') === '1' && window.parent !== window) document.documentElement.classList.add('embed'); } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..900&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      future: { hoverOnlyWhenSupported: true },
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          colors: { carbon: { 950: '#06080b', 900: '#0b0e14', 800: '#121722', 700: '#1b2230' } }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* =====================================================
+       TOKENS (Modo Día por defecto · html.dark = Modo Noche)
+       ===================================================== */
+    :root {
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+      --page: #f1f5f9;
+      --stage-top: #f8fafc;
+      --stage-bottom: #eaf0f8;
+      --stage-border: rgba(226, 232, 240, 0.9);
+      --stage-shadow: 0 30px 60px -32px rgba(15, 23, 42, 0.22);
+      --grid: rgba(15, 23, 42, 0.045);
+      --glow: rgba(37, 99, 235, 0.13);
+
+      --beam-a: rgba(37, 99, 235, 0.30);
+      --beam-b: rgba(34, 211, 238, 0.09);
+      --spot: rgba(37, 99, 235, 0.15);
+      --beam-w: min(25rem, 96vw);
+      --beam-h: 12rem;
+
+      --card: rgba(255, 255, 255, 0.95);
+      --card-border: rgba(226, 232, 240, 0.85);
+      --card-shadow: 0 28px 56px -28px rgba(15, 23, 42, 0.28);
+
+      --text: #0f172a;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.08);
+
+      --field-bg: #ffffff;
+      --field-border: #e2e8f0;
+      --field-border-hover: #cbd5e1;
+      --field-text: #0f172a;
+      --placeholder: #94a3b8;
+      --focus-border: #3b82f6;
+      --focus-ring: rgba(59, 130, 246, 0.15);
+
+      --danger: #dc2626;
+      --danger-ring: rgba(239, 68, 68, 0.14);
+      --danger-bg: rgba(239, 68, 68, 0.07);
+      --danger-border: rgba(239, 68, 68, 0.28);
+
+      --seg-track: #f1f5f9;
+      --seg-thumb: #ffffff;
+      --seg-thumb-shadow: 0 1px 2px rgba(15, 23, 42, 0.10), 0 4px 12px -2px rgba(15, 23, 42, 0.14);
+      --meter-track: #e2e8f0;
+
+      --hw-plate: #cbd5e1;
+      --hw-metal: #94a3b8;
+      --hw-body: #e8eef6;
+      --hw-edge: #cbd5e1;
+      --hw-hi: #ffffff;
+      --hw-dome: #0f172a;
+      --hw-lens: #020617;
+      --hw-ring: #38bdf8;
+    }
+    html.dark {
+      color-scheme: dark;
+      --page: #06080b;
+      --stage-top: #0b0e14;
+      --stage-bottom: #06080b;
+      --stage-border: rgba(255, 255, 255, 0.08);
+      --stage-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9);
+      --grid: rgba(255, 255, 255, 0.04);
+      --glow: rgba(37, 99, 235, 0.22);
+
+      --beam-a: rgba(125, 211, 252, 0.34);
+      --beam-b: rgba(37, 99, 235, 0.07);
+      --spot: rgba(56, 189, 248, 0.26);
+
+      --card: rgba(15, 20, 29, 0.80);
+      --card-border: rgba(255, 255, 255, 0.10);
+      --card-shadow: 0 32px 64px -28px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --subtle: #64748b;
+      --accent: #60a5fa;
+      --accent-soft: rgba(96, 165, 250, 0.12);
+
+      --field-bg: #0b0e14;
+      --field-border: rgba(255, 255, 255, 0.12);
+      --field-border-hover: rgba(255, 255, 255, 0.24);
+      --field-text: #f8fafc;
+      --placeholder: #64748b;
+      --focus-border: #3b82f6;
+      --focus-ring: rgba(59, 130, 246, 0.22);
+
+      --danger: #f87171;
+      --danger-ring: rgba(248, 113, 113, 0.18);
+      --danger-bg: rgba(248, 113, 113, 0.09);
+      --danger-border: rgba(248, 113, 113, 0.30);
+
+      --seg-track: rgba(255, 255, 255, 0.06);
+      --seg-thumb: #1b2230;
+      --seg-thumb-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+      --meter-track: rgba(255, 255, 255, 0.10);
+
+      --hw-plate: #334155;
+      --hw-metal: #475569;
+      --hw-body: #1b2230;
+      --hw-edge: rgba(255, 255, 255, 0.12);
+      --hw-hi: rgba(255, 255, 255, 0.22);
+      --hw-dome: #020617;
+      --hw-lens: #000000;
+      --hw-ring: #38bdf8;
+    }
+    @media (min-width: 640px) {
+      :root { --beam-w: 34rem; --beam-h: 15rem; }
+    }
+
+    /* =====================================================
+       BASE
+       ===================================================== */
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { background: var(--page); color: var(--text); font-feature-settings: 'cv11', 'ss01'; font-optical-sizing: auto; overflow-x: hidden; }
+    .hidden { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Transición suave si se navega directo a esta página (Chrome/Edge/Safari recientes) */
+    @view-transition { navigation: auto; }
+
+    /* ---- Modo embebido: cámara + tarjeta flotan sobre el catálogo (sin otro "marco") ---- */
+    html.embed, html.embed body { background: transparent; }
+    html.embed main { padding: 0; }
+    html.embed .auth-stage { min-height: 100svh; border-radius: 0; border: 0; box-shadow: none; background: none; }
+    html.embed .auth-stage::before { display: none; }
+    html.embed #auth-topbar, html.embed .auth-foot { display: none; }
+    html.embed .auth-card { background: #ffffff; }
+    html.embed.dark .auth-card { background: #0f141d; }
+    .embed-close {
+      display: none; position: absolute; top: 0.9rem; right: 0.9rem; z-index: 2; width: 2.25rem; height: 2.25rem; place-items: center;
+      border: 0; border-radius: 9999px; background: transparent; color: var(--muted); cursor: pointer;
+      transition: color 200ms var(--ease-out), background-color 200ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .embed-close svg { width: 1.1rem; height: 1.1rem; }
+    html.embed .embed-close { display: grid; }
+    @media (hover: hover) { .embed-close:hover { color: var(--text); background: var(--accent-soft); } }
+    .embed-close:active { transform: scale(0.92); }
+
+    /* =====================================================
+       ESCENARIO (panel con cuadrícula + cámara + haz)
+       ===================================================== */
+    .auth-stage {
+      background:
+        radial-gradient(46% 38% at 50% 14%, var(--glow), transparent 70%),
+        linear-gradient(180deg, var(--stage-top) 0%, var(--stage-bottom) 100%);
+    }
+    @media (min-width: 640px) {
+      .auth-stage { border: 1px solid var(--stage-border); box-shadow: var(--stage-shadow); }
+    }
+    .auth-stage::before {
+      content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background-image:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+      background-size: 4rem 4rem;
+    }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.9rem 0.5rem 0.65rem;
+      border-radius: 9999px; font-size: 0.875rem; font-weight: 500; color: var(--muted);
+      transition: color 200ms var(--ease-out), background-color 200ms var(--ease-out), transform 180ms var(--ease-out);
+    }
+    .back-link svg { width: 1rem; height: 1rem; transition: transform 260ms var(--ease-out); }
+    @media (hover: hover) {
+      .back-link:hover { color: var(--text); background: var(--accent-soft); }
+      .back-link:hover svg { transform: translateX(-3px); }
+    }
+    .back-link:active { transform: scale(0.97); }
+
+    .brand { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+    .brand em { font-style: normal; font-weight: 400; color: var(--accent); }
+    .brand-mark {
+      display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 0.75rem;
+      background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.25);
+    }
+    .brand-mark svg { width: 1.3rem; height: 1.3rem; }
+
+    /* ---- Cámara domo ---- */
+    .cam { position: relative; z-index: 0; width: clamp(9.5rem, 34vw, 16rem); aspect-ratio: 240 / 128; }
+    .cam > svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    .hw-plate { fill: var(--hw-plate); }
+    .hw-screw { fill: var(--hw-metal); }
+    .hw-metal { fill: var(--hw-metal); }
+    .hw-body { fill: var(--hw-body); stroke: var(--hw-edge); stroke-width: 1; }
+    .hw-hi { fill: none; stroke: var(--hw-hi); stroke-width: 2; stroke-linecap: round; }
+    .hw-dome { fill: var(--hw-dome); }
+    .hw-reflect { fill: none; stroke: #ffffff; stroke-width: 2.2; stroke-linecap: round; opacity: 0.22; }
+    .hw-ring { fill: none; stroke: var(--hw-ring); stroke-width: 1.6; opacity: 0.9; }
+    .hw-lens { fill: var(--hw-lens); }
+    .hw-iris { fill: #0ea5e9; opacity: 0.9; }
+    .hw-glint { fill: #ffffff; opacity: 0.85; }
+    .led { fill: #22d3ee; animation: led 2.4s ease-in-out infinite; }
+    .led-glow { fill: #22d3ee; opacity: 0.25; animation: led 2.4s ease-in-out infinite; }
+    @keyframes led { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+    .beam {
+      position: absolute; left: 50%; top: 62.5%; width: var(--beam-w); height: var(--beam-h); margin-left: calc(var(--beam-w) / -2);
+      pointer-events: none; clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+      background: radial-gradient(75% 100% at 50% 0%, var(--beam-a) 0%, var(--beam-b) 55%, transparent 100%);
+      animation: beam-pulse 5s ease-in-out infinite;
+    }
+    @keyframes beam-pulse { 0%, 100% { opacity: 0.78; } 50% { opacity: 1; } }
+    .auth-stage[data-estado="cargando"] .led, .auth-stage[data-estado="cargando"] .led-glow { animation-duration: 0.55s; }
+    .auth-stage[data-estado="ok"] .beam { animation: none; opacity: 1; }
+
+    /* =====================================================
+       TARJETA
+       ===================================================== */
+    .auth-card {
+      position: relative; z-index: 1; width: 100%; max-width: 26rem; margin-top: 1.9rem; overflow: hidden;
+      border-radius: 1.75rem; background: var(--card); border: 1px solid var(--card-border); box-shadow: var(--card-shadow);
+    }
+    @media (min-width: 640px) { .auth-card { margin-top: 2.5rem; } }
+    .auth-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(70% 34% at 50% 0%, var(--spot), transparent 75%);
+    }
+    .auth-card-in { position: relative; }
+    .auth-title { font-size: 1.625rem; line-height: 1.15; font-weight: 800; letter-spacing: -0.03em; color: var(--text); }
+    .auth-sub { margin-top: 0.4rem; font-size: 0.875rem; line-height: 1.45; color: var(--muted); }
+    .auth-foot { margin-top: 1.25rem; text-align: center; font-size: 0.75rem; letter-spacing: 0.02em; color: var(--subtle); }
+    .swap { animation: swap-in 320ms var(--ease-out) both; }
+    .auth-enter { animation: swap-in 340ms var(--ease-out) both; }
+
+    /* ---- Tabs (segmentado con indicador deslizante) ---- */
+    .seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 9999px; background: var(--seg-track); }
+    .seg.is-locked { pointer-events: none; opacity: 0.7; }
+    .seg-thumb {
+      position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 9999px;
+      background: var(--seg-thumb); box-shadow: var(--seg-thumb-shadow); transition: transform 380ms var(--ease-out);
+    }
+    .seg[data-tab="register"] .seg-thumb { transform: translateX(100%); }
+    .seg button {
+      position: relative; z-index: 1; height: 2.5rem; border: 0; border-radius: 9999px; background: transparent; cursor: pointer;
+      font-size: 0.875rem; font-weight: 600; color: var(--muted);
+      transition: color 220ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .seg button[aria-selected="true"] { color: var(--text); }
+    .seg button:active { transform: scale(0.97); }
+
+    /* ---- Campos ---- */
+    .auth-label { display: block; margin-bottom: 0.4rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.01em; color: var(--muted); }
+    .field-box { position: relative; }
+    .field-icon {
+      position: absolute; left: 0.95rem; top: 50%; width: 1.15rem; height: 1.15rem; transform: translateY(-50%);
+      color: var(--subtle); pointer-events: none; transition: color 200ms var(--ease-out);
+    }
+    .field-box:focus-within .field-icon { color: var(--accent); }
+    .auth-input {
+      width: 100%; height: 3rem; padding: 0 0.95rem 0 2.8rem; border-radius: 1rem;
+      border: 1px solid var(--field-border); background: var(--field-bg); color: var(--field-text);
+      font-size: 1rem; font-weight: 500;
+      transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+    }
+    .auth-input.has-toggle { padding-right: 3rem; }
+    .auth-input::placeholder { color: var(--placeholder); font-weight: 400; }
+    @media (hover: hover) { .auth-input:hover { border-color: var(--field-border-hover); } }
+    .auth-input:focus { outline: none; border-color: var(--focus-border); box-shadow: 0 0 0 4px var(--focus-ring); }
+    .auth-input:read-only { cursor: progress; }
+    .auth-input:-webkit-autofill {
+      -webkit-text-fill-color: var(--field-text); caret-color: var(--field-text);
+      box-shadow: 0 0 0 1000px var(--field-bg) inset; transition: background-color 9999s ease-out;
+    }
+    .auth-input:-webkit-autofill:focus { box-shadow: 0 0 0 1000px var(--field-bg) inset, 0 0 0 4px var(--focus-ring); }
+    .field-box.is-invalid .auth-input { border-color: var(--danger); }
+    .field-box.is-invalid .auth-input:focus { border-color: var(--danger); box-shadow: 0 0 0 4px var(--danger-ring); }
+    .field-box.is-invalid .field-icon { color: var(--danger); }
+    .field-box.shake { animation: shake 320ms var(--ease-out); }
+
+    .pw-toggle {
+      position: absolute; right: 0.35rem; top: 50%; display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
+      transform: translateY(-50%); border: 0; border-radius: 0.75rem; background: transparent; cursor: pointer; color: var(--subtle);
+      transition: color 200ms var(--ease-out), transform 160ms var(--ease-out);
+    }
+    .pw-toggle svg { width: 1.2rem; height: 1.2rem; }
+    .pw-toggle .eye-off { display: none; }
+    .pw-toggle[data-visible="true"] .eye { display: none; }
+    .pw-toggle[data-visible="true"] .eye-off { display: block; }
+    @media (hover: hover) { .pw-toggle:hover { color: var(--text); } }
+    .pw-toggle:active { transform: translateY(-50%) scale(0.9); }
+
+    .field-error-in { display: flex; align-items: flex-start; gap: 0.4rem; margin-top: 0.4rem; font-size: 0.75rem; line-height: 1.35; font-weight: 500; color: var(--danger); }
+    .field-error-in svg { flex-shrink: 0; width: 0.95rem; height: 0.95rem; margin-top: 0.05rem; }
+    .form-alert-in {
+      display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.75rem 0.9rem; border-radius: 1rem;
+      background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); font-size: 0.8125rem; line-height: 1.4; font-weight: 500;
+    }
+    .form-alert-in svg { flex-shrink: 0; width: 1.1rem; height: 1.1rem; margin-top: 0.05rem; }
+    .anim-in { animation: err-in 260ms var(--ease-out) both; }
+
+    .hint { margin-top: 0.5rem; font-size: 0.75rem; line-height: 1.4; color: var(--subtle); }
+    .pw-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.35rem; margin-top: 0.65rem; }
+    .pw-meter span { position: relative; height: 0.3rem; overflow: hidden; border-radius: 9999px; background: var(--meter-track); }
+    .pw-meter span::after {
+      content: ''; position: absolute; inset: 0; background: var(--meter-color, #f59e0b);
+      transform: scaleX(0); transform-origin: left; transition: transform 320ms var(--ease-out);
+    }
+    .pw-meter[data-nivel="1"] { --meter-color: #f59e0b; }
+    .pw-meter[data-nivel="2"] { --meter-color: #f59e0b; }
+    .pw-meter[data-nivel="3"] { --meter-color: #2563eb; }
+    .pw-meter[data-nivel="4"] { --meter-color: #06b6d4; }
+    .pw-meter[data-nivel="1"] span:nth-child(-n+1)::after,
+    .pw-meter[data-nivel="2"] span:nth-child(-n+2)::after,
+    .pw-meter[data-nivel="3"] span:nth-child(-n+3)::after,
+    .pw-meter[data-nivel="4"] span:nth-child(-n+4)::after { transform: scaleX(1); }
+
+    /* ---- Checkbox ---- */
+    .check { display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer; user-select: none; font-size: 0.875rem; color: var(--muted); }
+    .check-box {
+      display: grid; place-items: center; width: 1.25rem; height: 1.25rem; flex-shrink: 0; border-radius: 0.375rem;
+      border: 1.5px solid var(--field-border-hover); background: var(--field-bg);
+      transition: background-color 220ms var(--ease-out), border-color 220ms var(--ease-out);
+    }
+    .check-box svg { width: 0.8rem; height: 0.8rem; color: #fff; opacity: 0; transform: scale(0.6); transition: transform 240ms var(--ease-out), opacity 180ms var(--ease-out); }
+    .check input:checked + .check-box { background: #2563eb; border-color: #2563eb; }
+    .check input:checked + .check-box svg { opacity: 1; transform: scale(1); }
+    .check input:focus-visible + .check-box { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ---- Botones ---- */
+    .btn-auth {
+      position: relative; display: inline-flex; width: 100%; height: 3rem; align-items: center; justify-content: center; gap: 0.5rem;
+      border: 0; border-radius: 9999px; background: #2563eb; color: #ffffff; cursor: pointer; user-select: none;
+      font-size: 0.95rem; font-weight: 600; text-decoration: none;
+      transition: transform 180ms var(--ease-out), background-color 200ms var(--ease-out), opacity 200ms var(--ease-out);
+    }
+    .btn-auth::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      box-shadow: 0 10px 28px -4px rgba(37, 99, 235, 0.55); opacity: 0; transition: opacity 300ms var(--ease-out);
+    }
+    @media (hover: hover) {
+      .btn-auth:hover { background: #3b82f6; }
+      .btn-auth:hover::before { opacity: 1; }
+    }
+    .btn-auth:active { transform: scale(0.97); }
+    .btn-auth:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .btn-auth:disabled { cursor: progress; }
+    .btn-auth.is-loading { opacity: 0.88; }
+    .btn-auth.is-ok { background: #0e7490; opacity: 1; }
+    .btn-auth.is-ok::before { opacity: 0; }
+    .btn-ghost {
+      display: inline-flex; width: 100%; height: 3rem; align-items: center; justify-content: center; border-radius: 9999px; cursor: pointer;
+      border: 1px solid var(--field-border); background: transparent; color: var(--text); font-size: 0.95rem; font-weight: 600;
+      transition: transform 180ms var(--ease-out), border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+    }
+    @media (hover: hover) { .btn-ghost:hover { border-color: var(--field-border-hover); background: var(--accent-soft); } }
+    .btn-ghost:active { transform: scale(0.97); }
+    .btn-spinner {
+      display: inline-block; width: 1rem; height: 1rem; border-radius: 9999px;
+      border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: spin 700ms linear infinite;
+    }
+    .btn-check { width: 1.1rem; height: 1.1rem; }
+    .switch-line { text-align: center; font-size: 0.875rem; color: var(--muted); }
+    .link-btn {
+      padding: 0.25rem 0.2rem; border: 0; border-radius: 0.375rem; background: none; cursor: pointer;
+      font-weight: 700; color: var(--accent); transition: transform 160ms var(--ease-out);
+    }
+    @media (hover: hover) { .link-btn:hover { text-decoration: underline; } }
+    .link-btn:active { transform: scale(0.96); }
+
+    .avatar {
+      display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 9999px;
+      background: var(--accent-soft); color: var(--accent); font-size: 1.5rem; font-weight: 800;
+      box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.3);
+    }
+    .session-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+
+    /* ---- Toast ---- */
+    #toast-auth {
+      position: fixed; left: 50%; bottom: 1.25rem; z-index: 60; max-width: calc(100% - 2rem); padding: 0.7rem 1rem; border-radius: 1rem;
+      background: #0f172a; color: #fff; font-size: 0.875rem; font-weight: 500; border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.45); transform: translate3d(-50%, 0, 0);
+      transition: opacity 280ms var(--ease-out), transform 280ms var(--ease-out);
+    }
+    html.dark #toast-auth { background: #1b2230; }
+    #toast-auth[data-visible="false"] { opacity: 0; transform: translate3d(-50%, 12px, 0) scale(0.97); pointer-events: none; }
+
+    /* ---- Animaciones (solo transform / opacity) ---- */
+    .reveal { animation: fade-up 700ms var(--ease-out) both; }
+    @keyframes fade-up { from { opacity: 0; transform: translate3d(0, 18px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+    @keyframes swap-in { from { opacity: 0; transform: translate3d(0, 8px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+    @keyframes err-in { from { opacity: 0; transform: translate3d(0, -4px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+
+<body class="font-sans antialiased">
+
+  <main class="flex min-h-svh items-stretch justify-center sm:p-6">
+    <div id="auth-stage" data-estado="idle"
+      class="auth-stage relative isolate flex w-full max-w-5xl flex-col overflow-hidden sm:min-h-[calc(100svh-3rem)] sm:rounded-[2rem]">
+
+      <!-- Barra superior: retorno al catálogo + marca -->
+      <header id="auth-topbar" class="relative z-10 flex items-center justify-between gap-3 px-4 pt-4 sm:px-6 sm:pt-5">
+        <a id="link-volver" href="index.html" class="back-link">
+          <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+          <span>Volver al catálogo</span>
+        </a>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3l8 4v5c0 5.25-3.4 9.74-8 11-4.6-1.26-8-5.75-8-11V7l8-4z"/>
+              <circle cx="12" cy="12" r="3" stroke-width="1.75"/>
+            </svg>
+          </span>
+          <span>AEGIS <em>Control</em></span>
+        </div>
+      </header>
+
+      <div class="relative z-10 mx-auto my-auto flex w-full flex-col items-center px-4 pb-10 pt-3 sm:px-8 sm:pb-7">
+
+        <!-- Cámara domo + haz de luz sobre la tarjeta -->
+        <div class="cam reveal" aria-hidden="true">
+          <svg viewBox="0 0 240 128" fill="none">
+            <rect class="hw-plate" x="84" y="0" width="72" height="10" rx="4"/>
+            <circle class="hw-screw" cx="96" cy="5" r="1.8"/>
+            <circle class="hw-screw" cx="144" cy="5" r="1.8"/>
+            <rect class="hw-metal" x="113" y="10" width="14" height="18"/>
+            <rect class="hw-plate" x="108" y="24" width="24" height="6" rx="3"/>
+            <rect class="hw-body" x="52" y="30" width="136" height="26" rx="13"/>
+            <path class="hw-hi" d="M68 36.5H172"/>
+            <path class="hw-dome" d="M62 56H178C178 90 154 112 120 112C86 112 62 90 62 56Z"/>
+            <path class="hw-reflect" d="M76 64C80 82 92 94 106 99"/>
+            <circle class="hw-ring" cx="120" cy="80" r="17"/>
+            <circle class="hw-lens" cx="120" cy="80" r="12"/>
+            <circle class="hw-iris" cx="120" cy="80" r="5"/>
+            <circle class="hw-glint" cx="115.5" cy="75.5" r="2.5"/>
+            <circle class="led-glow" cx="170" cy="43" r="6"/>
+            <circle class="led" cx="170" cy="43" r="2.6"/>
+          </svg>
+          <div class="beam"></div>
+        </div>
+
+        <!-- Tarjeta de acceso -->
+        <section class="auth-card reveal" aria-labelledby="auth-titulo" style="animation-delay:90ms">
+          <div class="auth-card-in px-5 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8">
+            <button type="button" class="embed-close" aria-label="Cerrar y volver" onclick="cerrarEmbed()">
+              <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+
+            <!-- Tabs: Iniciar sesión / Registrarse -->
+            <div id="auth-tabs" class="seg" role="tablist" aria-label="Acceso a tu cuenta" data-tab="login">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button type="button" role="tab" id="tab-auth-login" aria-selected="true" aria-controls="form-login" tabindex="0" onclick="cambiarTabAuth('login')">Iniciar sesión</button>
+              <button type="button" role="tab" id="tab-auth-register" aria-selected="false" aria-controls="form-register" tabindex="-1" onclick="cambiarTabAuth('register')">Registrarse</button>
+            </div>
+
+            <div class="mt-6 text-center">
+              <h1 id="auth-titulo" class="auth-title">Iniciar sesión</h1>
+              <p id="auth-subtitulo" class="auth-sub">Accede a tus pedidos, citas y garantías.</p>
+            </div>
+
+            <!-- Estado: ya hay una sesión activa -->
+            <div id="sesion-activa" class="mt-6 hidden text-center">
+              <div id="sesion-avatar" class="avatar" aria-hidden="true">A</div>
+              <p id="sesion-nombre" class="session-name"></p>
+              <p id="sesion-email" class="auth-sub"></p>
+              <div class="mt-6 space-y-3">
+                <a href="index.html" class="btn-auth">Ir al catálogo</a>
+                <button type="button" class="btn-ghost" onclick="cerrarSesion()">Cerrar sesión</button>
+              </div>
+            </div>
+
+            <div id="auth-forms" class="mt-6">
+
+              <!-- ============ LOGIN ============ -->
+              <form id="form-login" onsubmit="ejecutarLogin(event)" novalidate role="tabpanel" aria-labelledby="tab-auth-login" class="auth-form space-y-4">
+                <div id="login-alerta" class="form-alert hidden" role="alert">
+                  <div class="form-alert-in">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                    <span class="msg"></span>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="login-email" class="auth-label">Correo electrónico</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                    <input type="email" id="login-email" name="email" required autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false"
+                      placeholder="correo@ejemplo.com" class="auth-input" aria-describedby="login-email-error" />
+                  </div>
+                  <p id="login-email-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                </div>
+
+                <div>
+                  <label for="login-password" class="auth-label">Contraseña</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                    <input type="password" id="login-password" name="password" required autocomplete="current-password"
+                      placeholder="••••••••" class="auth-input has-toggle" aria-describedby="login-password-error" />
+                    <button type="button" class="pw-toggle" data-target="login-password" data-visible="false" aria-pressed="false" aria-label="Mostrar contraseña" onclick="alternarPassword(this)">
+                      <svg class="eye" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      <svg class="eye-off" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+                    </button>
+                  </div>
+                  <p id="login-password-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <label class="check">
+                    <input type="checkbox" id="login-remember" name="remember" class="sr-only" />
+                    <span class="check-box" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg></span>
+                    <span>Recordar mi correo</span>
+                  </label>
+                </div>
+
+                <button type="submit" id="btn-login-submit" class="btn-auth" data-label="Iniciar sesión">
+                  <span class="btn-spinner hidden" aria-hidden="true"></span>
+                  <svg class="btn-check hidden" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg>
+                  <span class="btn-label">Iniciar sesión</span>
+                </button>
+
+                <p class="switch-line">¿No tienes cuenta? <button type="button" class="link-btn" onclick="cambiarTabAuth('register')">Regístrate</button></p>
+              </form>
+
+              <!-- ============ REGISTRO ============ -->
+              <form id="form-register" onsubmit="ejecutarRegistro(event)" novalidate role="tabpanel" aria-labelledby="tab-auth-register" class="auth-form hidden space-y-4">
+                <div id="reg-alerta" class="form-alert hidden" role="alert">
+                  <div class="form-alert-in">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                    <span class="msg"></span>
+                  </div>
+                </div>
+
+                <div>
+                  <label for="reg-name" class="auth-label">Nombre completo / Empresa</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    <input type="text" id="reg-name" name="name" required autocomplete="name" placeholder="Juan Pérez" class="auth-input" aria-describedby="reg-name-error" />
+                  </div>
+                  <p id="reg-name-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                </div>
+
+                <div>
+                  <label for="reg-email" class="auth-label">Correo electrónico</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                    <input type="email" id="reg-email" name="email" required autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false"
+                      placeholder="correo@ejemplo.com" class="auth-input" aria-describedby="reg-email-error" />
+                  </div>
+                  <p id="reg-email-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                </div>
+
+                <div>
+                  <label for="reg-address" class="auth-label">Dirección (para entregas e instalaciones)</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                    <input type="text" id="reg-address" name="address" required autocomplete="street-address" placeholder="Calle, número, colonia, alcaldía" class="auth-input" aria-describedby="reg-address-error" />
+                  </div>
+                  <p id="reg-address-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                </div>
+
+                <div>
+                  <label for="reg-password" class="auth-label">Contraseña</label>
+                  <div class="field-box">
+                    <svg class="field-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg>
+                    <input type="password" id="reg-password" name="password" required autocomplete="new-password"
+                      placeholder="••••••••" class="auth-input has-toggle" aria-describedby="reg-password-error reg-password-hint" />
+                    <button type="button" class="pw-toggle" data-target="reg-password" data-visible="false" aria-pressed="false" aria-label="Mostrar contraseña" onclick="alternarPassword(this)">
+                      <svg class="eye" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      <svg class="eye-off" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+                    </button>
+                  </div>
+                  <p id="reg-password-error" class="field-error hidden" aria-live="polite"><span class="field-error-in"><svg fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="msg"></span></span></p>
+                  <div id="reg-password-meter" class="pw-meter" data-nivel="0" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                  <p id="reg-password-hint" class="hint" aria-live="polite">Usa 8 o más caracteres, mezclando letras y números.</p>
+                </div>
+
+                <button type="submit" id="btn-register-submit" class="btn-auth" data-label="Crear cuenta">
+                  <span class="btn-spinner hidden" aria-hidden="true"></span>
+                  <svg class="btn-check hidden" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 6.8"/></svg>
+                  <span class="btn-label">Crear cuenta</span>
+                </button>
+
+                <p class="switch-line">¿Ya tienes cuenta? <button type="button" class="link-btn" onclick="cambiarTabAuth('login')">Inicia sesión</button></p>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <p class="auth-foot">AEGIS Control · Videovigilancia &amp; Blindaje Electrónico</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-auth" role="status" aria-live="polite" data-visible="false"></div>
+
+  <script>
+    // =====================================================
+    // CONFIGURACIÓN
+    // =====================================================
+    const RUTA_CATALOGO = 'index.html';       // a dónde regresa el usuario al terminar o con "Volver al catálogo"
+    const CLAVE_USUARIO = 'cctv_usuario';     // misma clave que usa el catálogo para mostrar "Hola, ..."
+    const CLAVE_RECORDAR = 'aegis_recordar_email';
+
+    const $ = (id) => document.getElementById(id);
+    const EMBED = document.documentElement.classList.contains('embed');
+
+    // Regresa a la página desde la que llegó (misma web), o al catálogo
+    function destinoVolver() {
+      try {
+        if (document.referrer) {
+          const u = new URL(document.referrer);
+          if (u.origin === location.origin && !/login\.html$/.test(u.pathname)) return u.href;
+        }
+      } catch (_) {}
+      return RUTA_CATALOGO;
+    }
+    function notificarPadre(msg) {
+      try { window.parent.postMessage({ tipo: 'aegis-auth', ...msg }, location.origin); } catch (_) {}
+    }
+    function cerrarEmbed() { if (!estado.enviando) notificarPadre({ evento: 'cerrar' }); }
+
+    function leerUsuario() {
+      try { return JSON.parse(localStorage.getItem(CLAVE_USUARIO) || 'null'); } catch (_) { return null; }
+    }
+    let usuarioActivo = leerUsuario();
+    const estado = { tab: 'login', enviando: false };
+
+    const TEXTOS = {
+      login: { titulo: 'Iniciar sesión', sub: 'Accede a tus pedidos, citas y garantías.' },
+      register: { titulo: 'Crear cuenta', sub: 'Un solo registro para cotizar, agendar y dar seguimiento.' }
+    };
+
+    // =====================================================
+    // UTILIDADES DE UI
+    // =====================================================
+    let toastTimer;
+    function mostrarToast(msg) {
+      const t = $('toast-auth');
+      t.textContent = msg;
+      t.dataset.visible = 'true';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.dataset.visible = 'false'; }, 3200);
+    }
+
+    function reiniciarAnimacion(el, clase) {
+      el.classList.remove(clase);
+      void el.offsetWidth;
+      el.classList.add(clase);
+    }
+
+    function guardarUsuario(u) {
+      try { localStorage.setItem(CLAVE_USUARIO, JSON.stringify(u)); } catch (_) {}
+    }
+
+    // =====================================================
+    // VALIDACIÓN INLINE (sin alert nativo)
+    // =====================================================
+    const REGLAS = {
+      'login-email':    { requerido: 'Escribe tu correo electrónico.', email: true },
+      'login-password': { requerido: 'Escribe tu contraseña.' },
+      'reg-name':       { requerido: 'Escribe tu nombre o el de tu empresa.', min: 2, minMsg: 'El nombre es muy corto: usa al menos 2 caracteres.' },
+      'reg-email':      { requerido: 'Escribe tu correo electrónico.', email: true },
+      'reg-address':    { requerido: 'Necesitamos tu dirección para entregas e instalaciones.' },
+      'reg-password':   { requerido: 'Crea una contraseña para tu cuenta.' }
+    };
+
+    function mostrarError(id, msg) {
+      const input = $(id);
+      const err = $(id + '-error');
+      input.setAttribute('aria-invalid', 'true');
+      input.closest('.field-box').classList.add('is-invalid');
+      if (msg && err) {
+        err.querySelector('.msg').textContent = msg;
+        err.classList.remove('hidden');
+        reiniciarAnimacion(err, 'anim-in');
+      }
+    }
+
+    function limpiarError(id) {
+      const input = $(id);
+      const err = $(id + '-error');
+      input.removeAttribute('aria-invalid');
+      input.closest('.field-box').classList.remove('is-invalid');
+      if (err) err.classList.add('hidden');
+    }
+
+    function validarCampo(id) {
+      const regla = REGLAS[id];
+      const input = $(id);
+      const valor = id.endsWith('password') ? input.value : input.value.trim();
+      let msg = '';
+      if (!valor) msg = regla.requerido;
+      else if (regla.email && input.validity.typeMismatch) msg = 'Revisa el formato del correo (ej. nombre@dominio.com).';
+      else if (regla.min && valor.length < regla.min) msg = regla.minMsg;
+      if (msg) { mostrarError(id, msg); return false; }
+      limpiarError(id);
+      return true;
+    }
+
+    function validarFormulario(formId) {
+      const ids = [...$(formId).querySelectorAll('.auth-input')].map((i) => i.id);
+      const invalidos = ids.filter((id) => !validarCampo(id));
+      if (!invalidos.length) return true;
+      invalidos.forEach((id) => reiniciarAnimacion($(id).closest('.field-box'), 'shake'));
+      $(invalidos[0]).focus();
+      return false;
+    }
+
+    // El servidor responde en inglés ("Invalid credentials"): se traduce para que el aviso sea claro
+    const ERRORES_ES = {
+      'invalid credentials': 'Correo o contraseña incorrectos. Verifica tus datos e inténtalo de nuevo.',
+      'user not found': 'No encontramos una cuenta con ese correo. ¿Quieres crear una?',
+      'email already registered': 'Ese correo ya tiene una cuenta. Inicia sesión.',
+      'user already exists': 'Ese correo ya tiene una cuenta. Inicia sesión.',
+      'missing fields': 'Completa todos los campos para continuar.',
+      'too many requests': 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
+    };
+    const traducirError = (m, defecto) => ERRORES_ES[String(m || '').trim().toLowerCase()] || m || defecto;
+
+    function mostrarAlerta(id, msg) {
+      const a = $(id);
+      a.querySelector('.msg').textContent = msg;
+      a.classList.remove('hidden');
+      reiniciarAnimacion(a, 'anim-in');
+    }
+    function ocultarAlerta(id) { $(id).classList.add('hidden'); }
+
+    // =====================================================
+    // CONTRASEÑA: mostrar/ocultar + medidor
+    // =====================================================
+    function alternarPassword(btn) {
+      const input = $(btn.dataset.target);
+      const mostrar = input.type === 'password';
+      input.type = mostrar ? 'text' : 'password';
+      btn.dataset.visible = String(mostrar);
+      btn.setAttribute('aria-pressed', String(mostrar));
+      btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      input.focus({ preventScroll: true });
+      const fin = input.value.length;
+      try { input.setSelectionRange(fin, fin); } catch (_) {}
+    }
+
+    const ETIQUETAS_NIVEL = ['', 'Débil', 'Regular', 'Buena', 'Fuerte'];
+    function nivelPassword(p) {
+      if (!p) return 0;
+      let n = 0;
+      if (p.length >= 8) n++;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) n++;
+      if (/\d/.test(p)) n++;
+      if (/[^A-Za-z0-9]/.test(p) || p.length >= 12) n++;
+      return Math.max(1, n);
+    }
+    function actualizarMedidor() {
+      const nivel = nivelPassword($('reg-password').value);
+      $('reg-password-meter').dataset.nivel = String(nivel);
+      $('reg-password-hint').textContent = nivel === 0
+        ? 'Usa 8 o más caracteres, mezclando letras y números.'
+        : (nivel < 3
+          ? `Seguridad: ${ETIQUETAS_NIVEL[nivel]}. Prueba con 8+ caracteres, mayúsculas y números.`
+          : `Seguridad: ${ETIQUETAS_NIVEL[nivel]}.`);
+    }
+
+    // =====================================================
+    // ESTADO DE CARGA / ÉXITO
+    // =====================================================
+    function setCargando(formId, on, texto) {
+      estado.enviando = on;
+      const form = $(formId);
+      const btn = form.querySelector('button[type="submit"]');
+      form.setAttribute('aria-busy', String(on));
+      btn.disabled = on;
+      btn.classList.toggle('is-loading', on);
+      btn.querySelector('.btn-spinner').classList.toggle('hidden', !on);
+      btn.querySelector('.btn-label').textContent = on ? texto : btn.dataset.label;
+      form.querySelectorAll('.auth-input').forEach((i) => { i.readOnly = on; });
+      $('auth-tabs').classList.toggle('is-locked', on);
+      $('auth-stage').dataset.estado = on ? 'cargando' : 'idle';
+    }
+
+    function completarSesion(user, mensaje, formId) {
+      usuarioActivo = user;
+      guardarUsuario(user);
+      const btn = $(formId).querySelector('button[type="submit"]');
+      btn.classList.remove('is-loading');
+      btn.classList.add('is-ok');
+      btn.querySelector('.btn-spinner').classList.add('hidden');
+      btn.querySelector('.btn-check').classList.remove('hidden');
+      btn.querySelector('.btn-label').textContent = '¡Listo!';
+      $('auth-stage').dataset.estado = 'ok';
+      mostrarToast(mensaje);
+      setTimeout(() => {
+        if (EMBED) notificarPadre({ evento: 'ok', user, mensaje });   // el catálogo cierra la capa sin recargar
+        else location.replace(destinoVolver());
+      }, EMBED ? 900 : 1100);
+    }
+
+    // Deja la pantalla como nueva cada vez que el catálogo la vuelve a abrir
+    function resetearPantalla() {
+      estado.enviando = false;
+      ['form-login', 'form-register'].forEach((fid) => {
+        const form = $(fid);
+        form.reset();
+        form.removeAttribute('aria-busy');
+        form.querySelectorAll('.auth-input').forEach((i) => { limpiarError(i.id); i.readOnly = false; delete i.dataset.tocado; });
+        form.querySelectorAll('.pw-toggle').forEach((b) => {
+          $(b.dataset.target).type = 'password';
+          b.dataset.visible = 'false';
+          b.setAttribute('aria-pressed', 'false');
+          b.setAttribute('aria-label', 'Mostrar contraseña');
+        });
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = false;
+        btn.classList.remove('is-loading', 'is-ok');
+        btn.querySelector('.btn-spinner').classList.add('hidden');
+        btn.querySelector('.btn-check').classList.add('hidden');
+        btn.querySelector('.btn-label').textContent = btn.dataset.label;
+      });
+      ocultarAlerta('login-alerta');
+      ocultarAlerta('reg-alerta');
+      $('auth-tabs').classList.remove('is-locked');
+      $('auth-stage').dataset.estado = 'idle';
+      actualizarMedidor();
+      precargarEmail();
+    }
+
+    // =====================================================
+    // TABS: Iniciar sesión <-> Crear cuenta
+    // =====================================================
+    function actualizarTitulos() {
+      const t = TEXTOS[estado.tab];
+      $('auth-titulo').textContent = t.titulo;
+      $('auth-subtitulo').textContent = t.sub;
+      reiniciarAnimacion($('auth-titulo').parentElement, 'swap');
+    }
+
+    function cambiarTabAuth(tab) {
+      if (estado.enviando || estado.tab === tab) return;
+      const esLogin = tab === 'login';
+      estado.tab = tab;
+      $('auth-tabs').dataset.tab = tab;
+      $('tab-auth-login').setAttribute('aria-selected', String(esLogin));
+      $('tab-auth-register').setAttribute('aria-selected', String(!esLogin));
+      $('tab-auth-login').tabIndex = esLogin ? 0 : -1;
+      $('tab-auth-register').tabIndex = esLogin ? -1 : 0;
+
+      const mostrar = $(esLogin ? 'form-login' : 'form-register');
+      const ocultar = $(esLogin ? 'form-register' : 'form-login');
+      ocultar.classList.add('hidden');
+      mostrar.classList.remove('hidden');
+      reiniciarAnimacion(mostrar, 'auth-enter');
+      ocultarAlerta('login-alerta');
+      ocultarAlerta('reg-alerta');
+      actualizarTitulos();
+      try { history.replaceState(null, '', esLogin ? location.pathname + location.search : '#registro'); } catch (_) {}
+    }
+
+    // =====================================================
+    // SESIÓN
+    // =====================================================
+    function renderSesion() {
+      const activo = !!usuarioActivo;
+      $('sesion-activa').classList.toggle('hidden', !activo);
+      $('auth-tabs').classList.toggle('hidden', activo);
+      $('auth-forms').classList.toggle('hidden', activo);
+      if (activo) {
+        const nombre = String(usuarioActivo.name || usuarioActivo.email || 'Cliente');
+        $('auth-titulo').textContent = 'Ya iniciaste sesión';
+        $('auth-subtitulo').textContent = 'Continúa en el catálogo o cambia de cuenta.';
+        $('sesion-avatar').textContent = nombre.trim().charAt(0).toUpperCase();
+        $('sesion-nombre').textContent = 'Hola, ' + nombre.split(' ')[0];
+        $('sesion-email').textContent = usuarioActivo.email || '';
+      } else {
+        actualizarTitulos();
+      }
+    }
+    function actualizarEstadoUsuario() { renderSesion(); }
+
+    function cerrarSesion() {
+      usuarioActivo = null;
+      try { localStorage.removeItem(CLAVE_USUARIO); } catch (_) {}
+      renderSesion();
+      mostrarToast('Sesión cerrada.');
+    }
+
+    function recordarEmail(email, recordar) {
+      try {
+        if (recordar) localStorage.setItem(CLAVE_RECORDAR, email);
+        else localStorage.removeItem(CLAVE_RECORDAR);
+      } catch (_) {}
+    }
+    function precargarEmail() {
+      try {
+        const e = localStorage.getItem(CLAVE_RECORDAR);
+        if (e) { $('login-email').value = e; $('login-remember').checked = true; return true; }
+      } catch (_) {}
+      return false;
+    }
+
+    // =====================================================
+    // LLAMADAS AL BACKEND (mismas rutas y cuerpos que antes)
+    // =====================================================
+    async function ejecutarRegistro(e) {
+      e.preventDefault();
+      if (estado.enviando) return;
+      ocultarAlerta('reg-alerta');
+      if (!validarFormulario('form-register')) return;
+
+      const name = $('reg-name').value.trim();
+      const email = $('reg-email').value.trim();
+      const address = $('reg-address').value.trim();
+      const password = $('reg-password').value;
+
+      setCargando('form-register', true, 'Creando cuenta…');
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, address })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.user) {
+          setCargando('form-register', false);
+          mostrarAlerta('reg-alerta', traducirError(data.error, 'No pudimos crear tu cuenta. Inténtalo de nuevo.'));
+          return;
+        }
+        completarSesion(data.user, 'Cuenta creada e iniciada con éxito', 'form-register');
+      } catch (_) {
+        setCargando('form-register', false);
+        mostrarAlerta('reg-alerta', 'Error de comunicación con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+      }
+    }
+
+    async function ejecutarLogin(e) {
+      e.preventDefault();
+      if (estado.enviando) return;
+      ocultarAlerta('login-alerta');
+      if (!validarFormulario('form-login')) return;
+
+      const email = $('login-email').value.trim();
+      const password = $('login-password').value;
+
+      setCargando('form-login', true, 'Ingresando…');
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.user) {
+          setCargando('form-login', false);
+          mostrarAlerta('login-alerta', traducirError(data.error, 'Credenciales inválidas. Revisa tu correo y contraseña.'));
+          const pass = $('login-password');
+          mostrarError('login-password', '');
+          reiniciarAnimacion(pass.closest('.field-box'), 'shake');
+          pass.focus();
+          pass.select();
+          return;
+        }
+        recordarEmail(email, $('login-remember').checked);
+        const nombre = data.user.name ? `, ${data.user.name}` : '';
+        completarSesion(data.user, `Bienvenido de vuelta${nombre}`, 'form-login');
+      } catch (_) {
+        setCargando('form-login', false);
+        mostrarAlerta('login-alerta', 'Error de comunicación con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+      }
+    }
+
+    // =====================================================
+    // INICIALIZACIÓN
+    // =====================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Validación en vivo: al salir del campo (si ya escribió algo) y al corregir un error visible
+      document.querySelectorAll('.auth-input').forEach((input) => {
+        input.addEventListener('blur', () => {
+          if (input.value !== '' || input.dataset.tocado) { input.dataset.tocado = '1'; validarCampo(input.id); }
+        });
+        input.addEventListener('input', () => {
+          input.dataset.tocado = '1';
+          if (input.getAttribute('aria-invalid') === 'true') validarCampo(input.id);
+          ocultarAlerta(input.closest('form').id === 'form-login' ? 'login-alerta' : 'reg-alerta');
+        });
+      });
+      $('reg-password').addEventListener('input', actualizarMedidor);
+
+      // Flechas del teclado entre tabs
+      $('auth-tabs').addEventListener('keydown', (ev) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
+        ev.preventDefault();
+        const destino = ev.key === 'Home' ? 'login' : ev.key === 'End' ? 'register' : (estado.tab === 'login' ? 'register' : 'login');
+        cambiarTabAuth(destino);
+        $(destino === 'login' ? 'tab-auth-login' : 'tab-auth-register').focus();
+      });
+
+      // Mantiene el mismo tema si cambia en otra pestaña
+      window.addEventListener('storage', (ev) => {
+        if (ev.key === 'aegis_tema') document.documentElement.classList.toggle('dark', ev.newValue === 'dark');
+      });
+
+      if (EMBED) {
+        // El catálogo (index.html) abre/reabre esta pantalla con un mensaje
+        window.addEventListener('message', (ev) => {
+          if (ev.origin !== location.origin || ev.source !== window.parent) return;
+          const d = ev.data || {};
+          if (d.tipo !== 'aegis-abrir') return;
+          usuarioActivo = leerUsuario();
+          resetearPantalla();
+          renderSesion();
+          cambiarTabAuth(d.modo === 'register' ? 'register' : 'login');
+          ['.cam', '.auth-card'].forEach((sel) => reiniciarAnimacion(document.querySelector(sel), 'reveal'));
+          if (!usuarioActivo && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            $(estado.tab === 'register' ? 'reg-name' : ($('login-email').value ? 'login-password' : 'login-email')).focus({ preventScroll: true });
+          }
+        });
+        // Esc, clic fuera de la tarjeta o ✕ = volver al catálogo
+        document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') cerrarEmbed(); });
+        document.addEventListener('click', (ev) => {
+          if (!ev.composedPath().some((n) => n.classList && n.classList.contains('auth-card'))) cerrarEmbed();
+        });
+      } else {
+        $('link-volver').href = destinoVolver();
+      }
+
+      const recordado = precargarEmail();
+      renderSesion();
+      if (location.hash === '#registro') cambiarTabAuth('register');
+
+      // Foco automático solo con ratón/teclado físico (en móvil abriría el teclado sin pedirlo)
+      if (!EMBED && !usuarioActivo && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        $(estado.tab === 'register' ? 'reg-name' : (recordado ? 'login-password' : 'login-email')).focus({ preventScroll: true });
+      }
+    });
+  </script>
+</body>
+</html>
