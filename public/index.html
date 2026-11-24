@@ -1266,6 +1266,12 @@
     let toastTimer;
     function mostrarToast(mensaje) {
       const toast = $('toast');
+      const dialogAbierto = document.querySelector('dialog[open]');
+      const contenedorDestino = dialogAbierto || document.body;
+      if (toast.parentElement !== contenedorDestino) {
+        contenedorDestino.appendChild(toast);
+      }
+
       toast.textContent = mensaje;
       toast.dataset.visible = 'true';
       clearTimeout(toastTimer);
@@ -2188,13 +2194,20 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
     // ----- Sección de reseñas en el modal de detalle -----
     const ETIQUETAS_ESTRELLAS = ['', 'Malo', 'Regular', 'Bueno', 'Muy bueno', 'Excelente'];
 
+    function esMiResena(r) {
+      if (!usuarioActivo) return false;
+      if (r.userId && usuarioActivo.id) return r.userId === usuarioActivo.id;
+      if (r.userEmail && usuarioActivo.email) return r.userEmail.toLowerCase() === usuarioActivo.email.toLowerCase();
+      return false;
+    }
+
     function renderResenas(id) {
       const cont = $('det-resenas');
       if (!cont) return;
       const idEsc = escapeHtml(id);
       const r = resumenResenas(id);
       const compro = !!pedidoVerificado(id);
-      const yaReseno = resenasDe(id).some((x) => x.mia);
+      const yaReseno = resenasDe(id).some((x) => esMiResena(x));
       state.estrellasForm = 0;
 
       const barras = [5, 4, 3, 2, 1].map((n) => {
@@ -2258,7 +2271,7 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
           <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
             <span class="font-semibold text-slate-700">${escapeHtml(x.nombre)}</span>
             ${x.verificada ? '<span class="rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">✓ Compra verificada</span>' : '<span class="text-slate-400">Sin compra verificada</span>'}
-            ${x.mia ? `<button type="button" onclick="eliminarMiResena('${escapeHtml(id)}')" class="ml-auto font-semibold text-red-600 hover:underline">Eliminar mi reseña</button>` : ''}
+            ${esMiResena(x) ? `<button type="button" onclick="eliminarMiResena('${escapeHtml(id)}')" class="ml-auto font-semibold text-red-600 hover:underline">Eliminar mi reseña</button>` : ''}
           </div>
         </article>`;
       }).join('');
@@ -2281,7 +2294,8 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
       const nombre = $('res-nombre').value.trim();
       const titulo = $('res-titulo').value.trim();
       const comentario = $('res-comentario').value.trim();
-      if (resenasDe(id).some((x) => x.mia)) { mostrarToast('Ya calificaste este producto.'); return; }
+      if (!usuarioActivo) { mostrarToast('Inicia sesión para publicar una reseña.'); return; }
+      if (resenasDe(id).some((x) => esMiResena(x))) { mostrarToast('Ya calificaste este producto.'); return; }
       if (estrellas < 1) { mostrarToast('Elige de 1 a 5 estrellas.'); return; }
       if (nombre.length < 2) { mostrarToast('Escribe tu nombre.'); return; }
       if (comentario.length < 10) { mostrarToast('Cuéntanos un poco más (mínimo 10 caracteres).'); return; }
@@ -2289,21 +2303,23 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
       const pedido = pedidoVerificado(id);
       const resena = {
         id: 'RES-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        productoId: id, estrellas, titulo, comentario, nombre,
+        productoId: id,
+        userId: usuarioActivo.id,
+        userEmail: usuarioActivo.email,
+        estrellas, titulo, comentario, nombre,
         verificada: !!pedido, folio: pedido ? pedido.folio : null,
-        fecha: new Date().toISOString(), mia: true
+        fecha: new Date().toISOString()
       };
       state.resenas.unshift(resena);
       escribirStorage('aegis_resenas', state.resenas);
-      const { mia, ...paraServidor } = resena;
-      fetch('/api/resenas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': resena.id }, body: JSON.stringify(paraServidor) }).catch(() => {});
+      fetch('/api/resenas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': resena.id }, body: JSON.stringify(resena) }).catch(() => {});
       renderResenas(id);
       renderCatalogo();
       mostrarToast('¡Gracias por tu reseña!');
     }
 
     function eliminarMiResena(id) {
-      const mia = resenasDe(id).find((x) => x.mia);
+      const mia = resenasDe(id).find((x) => esMiResena(x));
       if (!mia) return;
       state.resenas = state.resenas.filter((x) => x !== mia);
       escribirStorage('aegis_resenas', state.resenas);
@@ -2315,16 +2331,21 @@ const MODELOS_POR_DEFECTO = ['PAQ-01', 'PAQ-02', 'PROD-01'];
 
     async function sincronizarResenas() {
       try {
-        const res = await fetch('/api/resenas');
+        const res = await fetch('/api/resenas', { cache: 'no-store' });
         if (!res.ok) return;
         const remotas = await res.json();
         if (!Array.isArray(remotas)) return;
-        const propias = state.resenas.filter((x) => x.mia);
-        const idsPropios = new Set(propias.map((x) => x.id));
+
+        const idsRemotos = new Set(remotas.map((x) => x && x.id).filter(Boolean));
+        const localesSinSubir = state.resenas.filter((x) => x && x.id && !idsRemotos.has(x.id));
         const limpias = remotas
-          .filter((x) => x && x.productoId && !idsPropios.has(x.id))
-          .map((x) => ({ ...x, mia: false, estrellas: Math.min(5, Math.max(1, parseInt(x.estrellas, 10) || 1)) }));
-        state.resenas = [...propias, ...limpias];
+          .filter((x) => x && x.productoId)
+          .map((x) => ({
+            ...x,
+            estrellas: Math.min(5, Math.max(1, parseInt(x.estrellas, 10) || 1))
+          }));
+
+        state.resenas = [...localesSinSubir, ...limpias];
         escribirStorage('aegis_resenas', state.resenas);
       } catch (_) {}
     }
